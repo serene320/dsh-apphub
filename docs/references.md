@@ -123,3 +123,24 @@ open-mcp-apps 的 [公开类型接口](https://github.com/2nd1st/open-mcp-apps/b
 | [OSM Tile Usage Policy](https://operations.osmfoundation.org/policies/tiles/) | 数据开放不等于公共瓦片无限可用；有署名、缓存、请求标识要求，不提供可用性保证 | 不作为国内首版的“永久免费兜底”；未验证公共路线服务的能力，不照抄插件宣传 |
 
 选择结论是工程判断：高德国内数据路径作为优先候选，地图插件复用优先核查，官方 MCP 为备选；M0 验证后再锁定实现。外部地图数据的保存/展示边界仍须随具体选定接口核对，公开价格不是授权结论。
+
+## 收藏夹能力核查（2026-11-03）
+
+DSH 源码基线 0.2.1-rc.5，commit b830ec950faba0a46dda564be3e2d854afed94f1。以下路径均相对官方 harness 仓库；本轮为静态核查，未测试当前桌面服务加载、图片传输或账号登录。
+
+| 能力 | 公开接口/证据路径 | 结论 |
+|---|---|---|
+| 图片查看 | packages/client/ui-primitives/src/index.ts、ImageLightbox.tsx | 公开导出 ImageLightbox；卡片布局与封面获取不由它提供 |
+| 受控资源传输 | packages/client/connection/README.zh.md；packages/api/session-controller/src/media-references.ts | connection.fetch 注册带 Peer 校验的资源路由，桌面有 IPC 载体；/api/file 属于绝对路径读取，不能宣称应用沙箱 |
+| 本地图片实例 | packages/client/ui-sidebar-documentpreview/src/client/image/ImageBody.tsx | 已有读取 bytes → Blob URL 展示与释放的实现参考，不能 deep-import 私有组件 |
+| 文件选择 | packages/client/ui-conversation/src/client/skeleton/InputBar.tsx:456；input/editor/view-binding.ts | 宿主使用隐藏 input type=file；pickFiles 依赖已挂载聊天 composer。未发现通用书签导入 API，不挪用会话附件协议 |
+| 元信息网页获取 | packages/web/web-fetch-http/README.zh.md；src/index.ts | ctx.web.fetch 提供公共匿名、有限大小的 HTML/text，处理公开 IP 与连接固定；拒绝二进制，不能直接下载封面 |
+| 密钥输入与存储 | packages/client/ui-primitives/src/index.ts；packages/credentials/credentials/README.zh.md；packages/api/settings-controller/src/credentials.ts | SettingsSecretField、ctx.credentials、remote.credentials 可复用；实际权限与注入在实现时核实 |
+| 授权流程 | packages/credentials/authorization/README.zh.md | registerFlow/begin/cancel 是通用机制，提供方协议需集成方实现。本次未发现面向 Stars 的 GitHub flow |
+| Copilot | packages/llm/llm-pi-ai/src/provider-data.generated.ts、tests/auth.spec.ts | 存在 github-copilot 模型凭据；不是收藏应用可借用的 GitHub 授权 |
+
+官方外部依据：
+- [Open Graph](https://ogp.me/)：页面标题、描述与封面元信息。
+- [GitHub Starring API](https://docs.github.com/en/rest/activity/starring)：用户 Stars、分页、Star 时间、认证访问范围；fine-grained token 使用 Starring read 权限。
+- [GitHub OAuth App 注册](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app)：自己的应用与 device flow 配置，不能把宿主通用授权框架当作现成 GitHub 登录。
+- [Karakeep 导入](https://docs.karakeep.com/using-karakeep/import/)：Netscape HTML 路径；仅参考格式与交互，不复制其 AGPL 实现。
