@@ -9,3 +9,8 @@ export function chooseBookmarkFile(onRead:(html:string)=>void,onError:(message:s
 }
 /** Reuse the DSH desktop handler, validating the URL before opening. */
 export function openBookmark(url:string){window.open(bookmarkUrl(url),'_blank','noopener,noreferrer')}
+
+export function downloadBookmarks(file:{name:string;mime:string;text:string}){
+ const url=URL.createObjectURL(new Blob([file.text],{type:file.mime+';charset=utf-8'})),link=document.createElement('a')
+ link.href=url;link.download=file.name;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)
+}

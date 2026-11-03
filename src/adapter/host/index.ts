@@ -1,3 +1,4 @@
+import {formatBookmarks,collectBookmarkExport} from '../../application/bookmark-export.ts'
 import type {} from '@deepseek-ai/dsh-client-connection'
 import {createBookmarkPreviews} from './bookmark-previews.ts'
 import type {WebAccess} from './bookmark-previews.ts'
@@ -85,6 +86,15 @@ export class AppHubService extends TypertRemoteService {
     signal.throwIfAborted();const b=this.bookmarkService().find(id);if(!b||b.deletedAt)throw Error('NOT_FOUND')
     this.bookmarkService().preview(id,b.url,{status:'failed',title:'',description:'',image:'',icon:'',error:'',checkedAt:'1970-01-01T00:00:00.000Z'})
     this.previews?.enqueue([id]);return true
+  }
+  @Remote('exportBookmarks')
+  exportBookmarks(query:string,collection:string,format:string,signal:AbortSignal):{name:string;mime:string;text:string}{
+    signal.throwIfAborted()
+    if(!['markdown','html','json'].includes(format))throw Error('不支持的导出格式')
+    const service=this.bookmarkService(),items=collectBookmarkExport(offset=>service.page(query,collection,offset))
+    const result=formatBookmarks(items,format as 'markdown'|'html'|'json')
+    if(Buffer.byteLength(result.text)>20*1024*1024)throw Error('导出超过 20 MB，请缩小筛选范围。')
+    return result
   }
   @Remote('queryBookmarks')
   queryBookmarks(query:string,collection:string,offset:number,signal:AbortSignal):BookmarkPage{signal.throwIfAborted();const page=this.bookmarkService().page(query,collection,offset);this.previews?.enqueue(page.items.map(b=>b.id));return page}

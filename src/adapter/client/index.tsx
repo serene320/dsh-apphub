@@ -1,3 +1,4 @@
+import {bookmarkExporter} from './bookmark-export.ts'
 import {useBookmarkLoadMore} from './bookmark-load-more.ts'
 import {useBookmarkMedia} from './bookmark-media.ts'
 import {createBookmarksController} from '../../application/bookmarks-controller.ts'
@@ -33,12 +34,12 @@ import notesCss from '../../ui/notes.css'
 import appearanceCss from '../../ui/appearance.css'
 
 const PANEL = 'apphub' as MainPanelId
-export const inject = ['slots', 'layout', 'remote', 'sessions', 'uiWorkspace']
+export const inject = ['slots', 'layout', 'remote', 'sessions', 'uiWorkspace', 'fileUpload']
 type NotesController = ReturnType<typeof createNotesController>
 type SettingsController = ReturnType<typeof createSettingsController>
 type Runner = ReturnType<typeof createTaskRunner>
-interface SurfaceProps { bookmarks:ReturnType<typeof createBookmarksController>; port: HubPort; notes: NotesController; settings: SettingsController; noteSettings: SettingsController; runner: Runner }
-function Surface({port,notes,settings,noteSettings,runner,bookmarks}:SurfaceProps) {
+interface SurfaceProps { exportBookmarks:ReturnType<typeof bookmarkExporter>; bookmarks:ReturnType<typeof createBookmarksController>; port: HubPort; notes: NotesController; settings: SettingsController; noteSettings: SettingsController; runner: Runner }
+function Surface({exportBookmarks,port,notes,settings,noteSettings,runner,bookmarks}:SurfaceProps) {
   const [prompt,setPrompt]=useState('')
   const [home] = useState(()=>createHomeController(port))
   const [page,setPage]=useState('notes')
@@ -71,7 +72,7 @@ function Surface({port,notes,settings,noteSettings,runner,bookmarks}:SurfaceProp
     <nav className="hub-navigation" aria-label="AppHub 应用导航"><Button size="sm" variant="ghost" aria-pressed={page==='home'} onClick={()=>setPage('home')}><HubIcon size={16}/>AppHub</Button><span className="hub-navigation-label">应用</span>{apps.map(app=><Button key={app.id} size="sm" variant="ghost" aria-pressed={page===app.id} onClick={()=>openApp(app.id)}>{app.id==='notes'?<NotesIcon size={18}/>:<BookmarkIcon size={18}/ >}{app.name}</Button>)}</nav>
     <div className="hub-workspace-main">
     <div className="hub-workspace-content">
-    {page==='home'?<Home state={homeState} onRefresh={()=>{void home.refresh()}} onOpen={openApp} onSettings={()=>setSettingsOpen('hub')} onAppSettings={()=>setSettingsOpen('notes')} onTask={openApp}/>:page==='bookmarks'?<Bookmarks view={bookmarkView} onViewChange={setBookmarkView} viewportRef={bookmarkViewport} onRefreshPreview={id=>{void bookmarks.refreshPreview(id)}} media={media} onFilter={bookmarks.filter} loadMoreRef={loadMoreRef} state={bookmarkState} appearance={preferences.value.appearance} onSave={bookmarks.save} onRemove={bookmarks.remove} onImport={()=>chooseBookmarkFile(html=>{void bookmarks.preview(html)},bookmarks.reportError)} onConfirmImport={()=>{void bookmarks.importHtml()}} onCloseImport={bookmarks.clearImport} onOpen={openBookmark} onReload={()=>{void bookmarks.load()}}/>:<>
+    {page==='home'?<Home state={homeState} onRefresh={()=>{void home.refresh()}} onOpen={openApp} onSettings={()=>setSettingsOpen('hub')} onAppSettings={()=>setSettingsOpen('notes')} onTask={openApp}/>:page==='bookmarks'?<Bookmarks onExport={async(format,task)=>{try{return await exportBookmarks(bookmarkState.query,bookmarkState.collection,format,task)}catch(e){bookmarks.reportError(e instanceof Error?e.message:'导出失败');return false}}} view={bookmarkView} onViewChange={setBookmarkView} viewportRef={bookmarkViewport} onRefreshPreview={id=>{void bookmarks.refreshPreview(id)}} media={media} onFilter={bookmarks.filter} loadMoreRef={loadMoreRef} state={bookmarkState} appearance={preferences.value.appearance} onSave={bookmarks.save} onRemove={bookmarks.remove} onImport={()=>chooseBookmarkFile(html=>{void bookmarks.preview(html)},bookmarks.reportError)} onConfirmImport={()=>{void bookmarks.importHtml()}} onCloseImport={bookmarks.clearImport} onOpen={openBookmark} onReload={()=>{void bookmarks.load()}}/>:<>
 
 
       <Notes appearance={notePreferences.value.appearance} onArchive={async archived=>{const ok=await notes.setArchived(archived);if(ok)notes.close();return ok}} onCloseEditor={notes.closeEditor} state={notesState} onSettings={()=>setSettingsOpen('notes')} onCreate={()=>notes.create()} onSelect={notes.select} onEdit={notes.edit} onSave={()=>{void notes.save()}} onRestore={notes.restore} onReload={()=>{void notes.load()}}/>
@@ -119,6 +120,7 @@ export async function apply(ctx: Context) {
     })
     const settings=makeSettings('hub'),noteSettings=makeSettings('notes')
     void settings.load();void noteSettings.load()
+    const exportBookmarks=bookmarkExporter(scope)
     const runner=createTaskRunner(scope,notes,bookmarks)
     scope.effect(()=>()=>{runner.dispose();notes.dispose();bookmarks.dispose()})
     // Flush early on backgrounding; a synchronous journal protects edits if teardown wins.
@@ -138,7 +140,7 @@ export async function apply(ctx: Context) {
       return()=>{clearTimeout(timer);offNotes()}
     })
     scope.slots.inject('main',function*(){
-      yield scope.slots.register({name:'main',key:PANEL},()=> <Surface bookmarks={bookmarks} port={port} notes={notes} settings={settings} noteSettings={noteSettings} runner={runner}/>)
+      yield scope.slots.register({name:'main',key:PANEL},()=> <Surface exportBookmarks={exportBookmarks} bookmarks={bookmarks} port={port} notes={notes} settings={settings} noteSettings={noteSettings} runner={runner}/>)
       yield ()=>{if(scope.layout.panelInfo.getSnapshot().activePanelId===PANEL)scope.layout.selectPanel(null)}
     })
     scope.slots.inject('sidebar.panellist',()=>scope.slots.register({name:'sidebar.panellist',id:PANEL,order:20,label:'AppHub'},HubIcon))

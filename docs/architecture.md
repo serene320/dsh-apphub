@@ -133,3 +133,7 @@ GitHub 凭据、实时同步、跨窗口通知和任务重启恢复尚未实现�
 收藏列表按每批 60 条滚动追加，底部可见时由 client IntersectionObserver 触发业务控制器 loadMore；控制器负责防重入、按 ID 去重、请求代次校验、错误保留与筛选重置。刷新保留已加载范围，不退回第一页。页码和翻页按钮、选择状态工具栏均已移除。
 
 收藏夹标题与筛选固定在结果滚动区外，分页观察器以结果区为 root。视图选择由 client Surface 持有；UI 只展示、回调，筛选等待与请求代次仍由控制器负责。筛选保留旧布局但暂时 inert；后台预览刷新不阻断结果操作。底部仅在追加请求期间展示加载状态。
+
+## 收藏导出出口
+
+当前筛选 → Host 同步分页读取 → application 序列化 → client 文件保存或 DSH fileUpload/session.prompt。JSON 是带 version 的业务快照，排除预览缓存和已删除数据；不引入同步协议。会话以 Host 返回的 session-scoped receiptId 引用附件，不接受文件路径或模型声明的附件身份。任务须由用户填写并点击创建执行，不隐式转交 super-agent 或飞书。
