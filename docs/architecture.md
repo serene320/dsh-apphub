@@ -24,6 +24,7 @@ AppHubApplication 内的 node:crypto 仅用于 ID 和参数摘要；OS 路径、
 DSH_HOME/apphub/
 ├── hub.sqlite               # 登记、公共设置、任务
 ├── apps/notes/data.sqlite   # 便签、应用设置
+├── apps/bookmarks/data.sqlite # 收藏、标签与集合
 └── notes.sqlite             # 迁移前旧库，保留且停止写入
 ```
 
@@ -96,40 +97,23 @@ check:boundaries 在构建前检查常见依赖和样式越界。它不是安全
 
 接入验收只要求实际链路：同一入口从普通聊天和 AppHub 访问同一业务服务；notes 与第二应用可交替/并行运行且结果不串应用；错误不影响其他应用；重开读取一致；UI 及业务复用不靠宿主私有接口。真实模型和外部计费调用须在明确的验收范围内进行。
 
-当前源码仍有 notes 硬编码，清单见 status.md。第二应用需要时才抽取共用部分，不为第三、第四应用预先设计加载器、权限面板或工作流 DSL。
+当前 AI 任务仍专用于 notes；收藏夹本轮通过页面手动操作，不迁移任务表。需要第二个可执行应用时才抽取共用部分，不为第三、第四应用预先设计加载器、权限面板或工作流 DSL。
 
-## 收藏夹架构（拟定）
-
-以下尚未实现；复用现有分层，不新建插件框架或独立进程。
+## 收藏夹基础架构
 
 ```text
-收藏页 / AppHub 任务 / 普通聊天
-          ↓
-AppHub 入口：可信身份、应用/操作校验、任务与幂等
-          ↓
-收藏业务：增改查、URL 去重、集合、导入合并、预览状态
-          ↓
-存储适配器         外部能力适配器
-bookmarks DB       DSH web / connection / credentials + GitHub API
+收藏页面 → client Remote 适配 → BookmarksService → BookmarksRepository
+HTML 文件选择 → Host parse5 解析 → 同一业务校验与导入事务
 ```
 
-- UI 只收状态与回调；文件选择、File.text、Blob URL 生命周期在 client adapter。隐藏的系统 file input 属于原生能力适配，可放 adapter；可见按钮/弹框复用 primitives。HTML 只解析不执行，不注入页面，不把附件塞入聊天。
-- Host 接收有限大小的导入文本和明确请求，不接受模型任意文件路径。HTML 使用非执行解析器，并再次校验 http(s) URL。初始建议单文件 10MB、每批 100 条、一次最多 10000 条，达到上限明确提示，禁止静默截断；以实际 RPC 上限核对后收紧。
-- 元信息优先 ctx.web.fetch 的公共匿名 HTML，解析 title/description/og:image。现有提供方只返回文本，不能承担图片下载；二进制图片适配须单独验证公开地址、DNS 绑定与逐跳重定向、超时/大小/类型。首版只缓存经过检查的 PNG/JPEG/WebP，拒绝 HTML/SVG；不能用未经检查的通用 fetch 形成内网代理。宿主服务缺席时报告预览不可用，不私自修改配置。
-- 图片保存在 apps/bookmarks/files/previews，由随机/摘要 ID 寻址。通过 ctx.connection.fetch 注册本插件资源路由；仅按已登记资源 ID 读取，拒绝路径输入。客户端走宿主 connection 传输读取并管理 Blob URL，不硬编码 localhost、不新开端口。通用 /api/file 接受绝对路径，不作为应用文件隔离边界。
-- 卡片缩略图使用 img 与占位状态；需要放大时可使用公开 ImageLightbox。封面抓取失败不改收藏保存结果；图片懒加载、固定比例和按项更新，避免列表闪动。原网页通过官方外链能力打开，不嵌 iframe。
-- 凭据通过 ctx.credentials 独立记录/引用保存；只读 GitHub token 不进入 bookmarks DB、任务参数、日志或模型上下文。SettingsSecretField 是可复用输入组件，不等于 GitHub 登录能力。不得读取/借用 Copilot、git helper、浏览器或其他客户端的凭据。
+- application/bookmarks.ts 定义业务校验与仓储接口；bookmarks-controller.ts 管理列表、保存和导入状态。UI 不访问文件、网络或数据库；业务不依赖 React/DSH。
+- client adapter 负责系统 file input、File.text 和外链打开。Host 接收有上限的 HTML 文本，不接收任意磁盘路径。HTML 用 parse5 解析、只取标题/URL/目录，不执行脚本、不渲染原 HTML、不下载书签内资源。
+- 文件上限 10 MB、10000 个链接、100 层解析遍历；超限明确失败。无效 URL 和过长集合路径计入跳过。预览前 30 条，确认后一次事务处理全部有效条目。提交开始后不能取消已开始的事务；提交前可取消。
+- apps/bookmarks/data.sqlite 独立保存 id、url、title、description、tags、collections、revision、createdAt/updatedAt/deletedAt、source。集合以完整路径字符串表示，不另建树服务、来源表或导入队列。
+- URL 采用标准 URL 规范化，保留 query/fragment；仅 HTTP(S)，拒绝嵌入账号密码。唯一 URL 约束去重；导入只合并集合，不覆盖人工标题/说明/标签。已删除 URL 不会因重复导入复活；用户显式添加可恢复。
+- 手动编辑带 expectedRevision，旧版本拒绝覆盖；相同保存回执丢失可重试。导入和保存以 Host 回执为准；请求 15 秒未确认则退出等待，不自动重提。数据库可能已提交，刷新/重复导入可核对。
+- 应用初始化失败独立捕获；首页和备忘录继续可用。仍是同进程逻辑隔离，大文件解析/事务可能短暂占用 Host，不保证进程级故障隔离。
+- 页面复用 Button/Input/SegmentedTabs/Modal、主题 tokens 和 AppHub 外观；本轮不增加收藏夹独立设置。卡片显示站点字母标识与文字，不冒充网页预览。
+- 静态应用表供目录和导航使用；只有 notes 声明执行能力。收藏夹页面隐藏任务框，避免任务误发到备忘录；原有任务结构和 notes.create 不变。浏览器同步和 AI 接入时继续经过业务服务，不允许直接写库。
 
-### 数据归属
-
-apps/bookmarks/data.sqlite 保存收藏、集合、来源和导入批次；files/previews 是可重建缓存。Hub 只存任务归属/结果引用，DSH 拥有凭据。
-
-最小实体：收藏（id、原始 URL、去重键、标题/说明及人工覆盖、网页元信息、AI 摘要、标签、revision、时间、预览状态/资源 ID）；集合（id、parentId、名称及成员）；来源（收藏 ID、类型、来源身份、外部 ID/原目录、可用收藏时间）；导入批次（来源、状态、进度、成功/重复/失败数量）。不为未来同步增加事件总线。
-
-URL 去重保守处理 scheme/host/默认端口，保留可能有语义的 query/fragment，不自动去掉全部参数；GitHub 仓库以官方 repository ID 辅助识别改名和多来源。网页 canonical 仅作线索，不盲目合并。重复导入合并来源，不覆盖人工字段。
-
-导入保存与补图分开。分批事务、稳定幂等键与进度持久化；取消停止后续批次，已保存数据保留并报告，不冒充全量回滚。崩溃后可重新导入去重；预览任务从待处理状态恢复，不需要独立任务平台。
-
-### AppHub 最小调整
-
-单一静态应用定义增加 bookmarks；任务明确 appId，提示和结果汇总交给对应应用。现有 noteId 的任务结果关联做有事务的兼容迁移，不删除旧便签关联。业务操作拟为 bookmarks.create/search/update；批量创建仍走同一业务校验和会话调用幂等。普通聊天无需从 AppHub 创建；模型无导入授权或凭据管理权限。归属跨应用的拒绝和重复调用必须有测试。
+预览缓存、图片资源路由、GitHub 凭据、实时同步和跨窗口通知尚未实现。源码能力核查保留在 references.md，不等同于产品功能。
