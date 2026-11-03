@@ -71,3 +71,8 @@
 .bookmarks-search>span{display:flex;width:100%;box-sizing:border-box;padding-right:32px}
 .bookmarks-search>button{position:absolute;right:3px;top:2px;width:28px;padding:0}
 .bookmarks-load-more:empty{min-height:1px;margin-top:0}
+
+/* Stretch the primary hit area over metadata and whitespace, leaving secondary controls separate. */
+.bookmark-open::after{content:'';position:absolute;inset:0;z-index:1;cursor:pointer;border-radius:inherit}
+.bookmark-item footer button,.bookmark-item .bookmark-select{position:relative;z-index:2}
+.bookmarks-cards .bookmark-select{position:absolute}
