@@ -71,3 +71,29 @@ test('10000 bookmarks paginate and filter without sending the full collection to
   assert.throws(()=>service.page('','',0,10000))
  }finally{repo.close();rmSync(dir,{recursive:true,force:true})}
 })
+
+test('infinite loading appends once, refreshes loaded range, and ignores an old filter response',async()=>{
+ const rows=Array.from({length:125},(_,i)=>({id:String(i),title:String(i),preview:{status:'ready',checkedAt:new Date().toISOString()}}))
+ let calls:number[]=[],release:(()=>void)|undefined,blocked=false
+ const controller=createBookmarksController({query:async(q:string,_c:string,offset:number)=>{calls.push(offset);if(blocked&&offset===60)await new Promise<void>(r=>{release=r});return {items:q?[rows[124]]:rows.slice(offset,offset+60),total:q?1:125,collections:[]}}} as any)
+ try{
+  await controller.load();assert.equal(controller.getSnapshot().items.length,60)
+  blocked=true;const pending=controller.loadMore();await controller.loadMore();assert.deepEqual(calls,[0,60]);release!();await pending;blocked=false
+  assert.equal(controller.getSnapshot().items.length,120)
+  await controller.load();assert.equal(controller.getSnapshot().items.length,120)
+  await controller.loadMore();assert.equal(controller.getSnapshot().items.length,125)
+  const before=calls.length;await controller.loadMore();assert.equal(calls.length,before)
+  controller.filter('','');await controller.load();blocked=true;const old=controller.loadMore()
+  controller.filter('new','');await controller.load();release!();await old
+  assert.deepEqual(controller.getSnapshot().items.map(b=>b.id),['124']);assert.equal(controller.getSnapshot().loadingMore,false)
+ }finally{controller.dispose()}
+})
+
+test('next batch failure preserves loaded bookmarks and explicit reload allows retry',async()=>{
+ let fail=true
+ const rows=Array.from({length:61},(_,i)=>({id:String(i),preview:{status:'ready',checkedAt:new Date().toISOString()}}))
+ const controller=createBookmarksController({query:async(_q:string,_c:string,offset:number)=>{if(offset&&fail)throw Error('offline');return {items:rows.slice(offset,offset+60),total:61,collections:[]}}} as any)
+ try{await controller.load();await controller.loadMore();assert.equal(controller.getSnapshot().items.length,60);assert.equal(controller.getSnapshot().error,'offline');assert.equal(controller.getSnapshot().loadingMore,false)
+ fail=false;await controller.load();await controller.loadMore();assert.equal(controller.getSnapshot().items.length,61)
+ }finally{controller.dispose()}
+})

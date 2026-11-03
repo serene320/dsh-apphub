@@ -1,5 +1,5 @@
 .bookmarks-page{flex:1;min-height:0;overflow:auto;padding:calc(20px + var(--dsh-frame-top-clearance,0px)) 24px 20px;color:var(--dsw-alias-label-primary)}
-.bookmarks-heading,.bookmarks-toolbar,.bookmarks-collections,.bookmarks-grid,.bookmarks-pagination,.bookmarks-group-search,.bookmark-selection-bar{max-width:1100px;margin-inline:auto}
+.bookmarks-heading,.bookmarks-toolbar,.bookmarks-collections,.bookmarks-grid,.bookmarks-load-more,.bookmarks-group-search,.bookmark-selection-bar{max-width:1100px;margin-inline:auto}
 .bookmarks-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .bookmarks-heading h1{display:flex;align-items:center;gap:8px;font-size:20px;line-height:28px;margin:0;font-weight:500}
 .bookmarks-actions{display:flex;gap:8px}
@@ -16,7 +16,7 @@
 .bookmark-domain{font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bookmark-summary{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:5px;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere}
 .bookmark-monogram{display:grid;place-items:center;width:22px;height:22px;border:1px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-sm);font-size:12px;color:var(--dsw-alias-label-primary)}
-.bookmark-favicon{width:22px;height:22px;object-fit:contain}.bookmark-cover{grid-column:3;grid-row:1;width:80px;height:56px;object-fit:contain;border-radius:var(--dsw-radius-sm);align-self:start}
+.bookmark-favicon{width:22px;height:22px;object-fit:contain}.bookmark-cover{grid-column:3;grid-row:1;width:auto;height:auto;max-width:80px;max-height:56px;object-fit:contain;border-radius:var(--dsw-radius-md);align-self:start;justify-self:end}
 .bookmark-tags{display:flex;gap:4px;padding:0 12px;min-width:0;overflow:hidden}
 .bookmark-tags span{font-size:10px;line-height:16px;padding:1px 5px;background:var(--dsw-alias-interactive-bg-hover);border-radius:var(--dsw-radius-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bookmark-item footer{display:flex;align-items:center;gap:4px;padding:4px 8px}
@@ -37,7 +37,7 @@
 .bookmarks-cards .bookmark-select{position:absolute;right:40px;bottom:5px;z-index:1;background:var(--dsw-alias-bg-layer-1)}
 
 .bookmark-selection-bar{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px}.bookmark-selection-bar>span{margin-right:auto}
-.bookmarks-pagination{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:12px;color:var(--dsw-alias-label-secondary);font-size:12px}.bookmarks-pagination>span:first-child{margin-right:auto}
+.bookmarks-load-more{display:flex;align-items:center;justify-content:center;gap:10px;min-height:32px;margin-top:12px;color:var(--dsw-alias-label-secondary);font-size:12px}.bookmarks-load-more>span:first-child{margin-right:auto}
 .bookmarks-group-search{margin-top:8px}.bookmarks-group-search>span{max-width:240px}
 .bookmarks-empty{padding:64px 16px;text-align:center;color:var(--dsw-alias-label-secondary)}.bookmarks-empty h2{font-size:15px;font-weight:500}.bookmarks-error{max-width:900px;margin:12px auto;font-size:13px}.bookmark-dialog{width:min(520px,calc(100vw - 32px));color:var(--dsw-alias-label-primary)}.bookmark-dialog *{box-sizing:border-box}.bookmark-form{border:0;margin:0;padding:0;min-width:0;display:flex;flex-direction:column;gap:14px}.bookmark-form label{display:flex;flex-direction:column;gap:6px;font-size:12px}.bookmark-form textarea{resize:vertical;min-height:80px;max-height:180px;border:1px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-md);background:var(--dsw-alias-bg-layer-1);color:inherit;padding:10px;font:inherit;line-height:20px}.bookmark-import-preview{max-height:250px;overflow:auto}.bookmark-import-preview p{font-size:13px;margin:0;padding:8px 0;border-bottom:1px solid var(--dsw-alias-border-l2)}.bookmark-import-preview small{display:block;color:var(--dsw-alias-label-secondary);margin-top:4px}.bookmark-form p{font-size:12px}
 
