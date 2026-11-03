@@ -1,3 +1,6 @@
+import {previewNeedsRefresh} from '../../application/bookmark-preview.ts'
+import {proxyRouteFor} from '@deepseek-ai/dsh-http-proxy'
+import {isIP} from 'node:net'
 import {parse} from 'parse5'
 import {createHash} from 'node:crypto'
 import {lookup} from 'node:dns/promises'
@@ -29,12 +32,34 @@ export function extractPreview(html:string,base:string){
   }
   return result
 }
-/** Anonymous bounded image fetch. Pin a validated public IPv4 address at each redirect.
- * IPv6-only/translated networks fail closed. Never inherit browser cookies or proxy credentials. */
-export async function fetchPublicImage(value:string,signal:AbortSignal,redirects=0):Promise<{mime:string;body:Buffer}>{
+/** Anonymous bounded image fetch. Use the official proxy route, or pin validated public IPv4 addresses directly.
+ * Never inherit browser cookies; the host owns proxy configuration. */
+export async function fetchPublicImage(value:string,signal:AbortSignal,redirects=0,routeFor=proxyRouteFor):Promise<{mime:string;body:Buffer}>{
   const url=new URL(value)
   if(!['http:','https:'].includes(url.protocol)||url.username||url.password||value.length>4096)throw Error('图片地址不支持')
   signal.throwIfAborted()
+  const host=url.hostname.replace(/^\[|\]$/g,'')
+  if(isIP(host)&&!publicImageAddress(host))throw Error('图片地址未通过公网检查')
+  const route=routeFor(url)
+  if(route.proxied){
+    // The official DSH route owns the dispatcher and proxy-side DNS policy.
+    // Never install/change proxy policy here or silently fall back to direct fetching.
+    const response=await route.dispatcher.request({origin:url.origin,path:url.pathname+url.search,method:'GET',signal,headers:{accept:'image/png,image/jpeg,image/webp','user-agent':'DSH-AppHub/0.1'}})
+    try{
+      if(response.statusCode>=300&&response.statusCode<400){
+        const location=response.headers.location
+        if(redirects>=3||typeof location!=='string')throw Error('图片重定向过多')
+        response.body.destroy()
+        const next=new URL(location,url);if(url.protocol==='https:'&&next.protocol!=='https:')throw Error('拒绝不安全重定向')
+        return await fetchPublicImage(next.href,signal,redirects+1,routeFor)
+      }
+      const mime=String(response.headers['content-type']??'').split(';')[0]!
+      if(response.statusCode!==200||!['image/png','image/jpeg','image/webp'].includes(mime))throw Error('图片格式不支持')
+      const chunks:Buffer[]=[];let bytes=0
+      for await(const chunk of response.body){const part=Buffer.from(chunk);bytes+=part.length;if(bytes>2*1024*1024)throw Error('图片超过 2 MB');chunks.push(part)}
+      const body=Buffer.concat(chunks);validateImage(mime,body);return {mime,body}
+    }finally{response.body.destroy()}
+  }
   const addresses=await new Promise<{address:string;family:number}[]>((resolve,reject)=>{
     const cancel=()=>reject(signal.reason??Error('图片请求已取消'))
     signal.addEventListener('abort',cancel,{once:true})
@@ -44,34 +69,37 @@ export async function fetchPublicImage(value:string,signal:AbortSignal,redirects
   if(!addresses.length||addresses.some(a=>!publicImageAddress(a.address)))throw Error('图片地址未通过公网检查')
   return new Promise((resolve,reject)=>{
     const request=(url.protocol==='https:'?httpsRequest:httpRequest)(url,{method:'GET',agent:false,family:4,signal,lookup:(_host,_options,callback)=>callback(null,addresses[0]!.address,4),headers:{Accept:'image/png,image/jpeg,image/webp','User-Agent':'DSH-AppHub/0.1'}},response=>{
-      if(response.statusCode&&response.statusCode>=300&&response.statusCode<400){response.resume();if(redirects>=3||!response.headers.location){reject(Error('图片重定向过多'));return}const next=new URL(response.headers.location,url);if(url.protocol==='https:'&&next.protocol!=='https:'){reject(Error('拒绝不安全重定向'));return}void fetchPublicImage(next.href,signal,redirects+1).then(resolve,reject);return}
+      if(response.statusCode&&response.statusCode>=300&&response.statusCode<400){response.resume();if(redirects>=3||!response.headers.location){reject(Error('图片重定向过多'));return}const next=new URL(response.headers.location,url);if(url.protocol==='https:'&&next.protocol!=='https:'){reject(Error('拒绝不安全重定向'));return}void fetchPublicImage(next.href,signal,redirects+1,routeFor).then(resolve,reject);return}
       const mime=String(response.headers['content-type']??'').split(';')[0]!
       if(response.statusCode!==200||!['image/png','image/jpeg','image/webp'].includes(mime)){response.resume();reject(Error('图片格式不支持'));return}
       const chunks:Buffer[]=[];let bytes=0
       response.on('data',(chunk:Buffer)=>{bytes+=chunk.length;if(bytes>2*1024*1024){response.destroy(Error('图片超过 2 MB'));return}chunks.push(chunk)})
       response.on('error',reject);response.on('end',()=>{
         const body=Buffer.concat(chunks)
-        const valid=mime==='image/png'?body.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])):mime==='image/jpeg'?body[0]===255&&body[1]===216:body.toString('ascii',0,4)==='RIFF'&&body.toString('ascii',8,12)==='WEBP'
-        if(!valid){reject(Error('图片内容不匹配'));return}resolve({mime,body})
+        try{validateImage(mime,body);resolve({mime,body})}catch(error){reject(error)}
       })
     });request.on('error',reject);request.setTimeout(10000,()=>request.destroy(Error('图片超时')));request.end()
   })
+}
+function validateImage(mime:string,body:Buffer){
+ const valid=mime==='image/png'?body.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])):mime==='image/jpeg'?body[0]===255&&body[1]===216:body.toString('ascii',0,4)==='RIFF'&&body.toString('ascii',8,12)==='WEBP'
+ if(!valid)throw Error('图片内容不匹配')
 }
 export function createBookmarkPreviews(service:ReturnType<typeof createBookmarksService>,media:SqliteBookmarksRepository,web:()=>WebAccess|undefined){
   const queue:string[]=[],pending=new Set<string>(),abort=new AbortController();let active=0,disposed=false
   async function process(id:string){const item=service.find(id);if(!item||item.deletedAt)return
     const signal=AbortSignal.any([abort.signal,AbortSignal.timeout(15000)])
-    let value:BookmarkPreview={status:'failed',title:'',description:'',image:'',icon:'',error:'',checkedAt:new Date().toISOString()}
+    let value:BookmarkPreview={title:'',description:'',image:'',icon:'',...item.preview,status:'failed',error:'',checkedAt:new Date().toISOString()}
     try{
       const provider=web();if(!provider)throw Error('DSH 网页抓取不可用')
       const page=await provider.fetch({url:item.url},signal)
       if(page.statusCode<200||page.statusCode>=300||page.body.kind!=='html')throw Error('网页没有可用预览')
       const extracted=extractPreview(page.body.content,page.url)
       value={...value,title:extracted.title,description:extracted.description,status:'ready'}
-      for(const kind of ['image','icon'] as const){if(!extracted[kind])continue;try{const image=await fetchPublicImage(extracted[kind],signal);const key=createHash('sha256').update(extracted[kind]).digest('hex');media.putMedia(key,image.mime,image.body);value[kind]=key}catch{}}
+      for(const kind of ['image','icon'] as const){if(!extracted[kind])continue;try{const image=await fetchPublicImage(extracted[kind],signal);const key=createHash('sha256').update(image.mime).update(image.body).digest('hex');media.putMedia(key,image.mime,image.body);value[kind]=key}catch{}}
     }catch(error){value.error=error instanceof Error?error.message.slice(0,200):'预览不可用'}
     if(!disposed)service.preview(id,item.url,value)
   }
   function drain(){while(!disposed&&active<2&&queue.length){const id=queue.shift()!;active++;void process(id).catch(()=>{}).finally(()=>{active--;pending.delete(id);drain()})}}
-  return {enqueue(ids:string[]){for(const id of ids.slice(0,60)){if(pending.has(id)||queue.length>=120)continue;const b=service.find(id);if(!b||b.deletedAt)continue;const p=b.preview;if(p&&(!p.image||media.media(p.image))&&(!p.icon||media.media(p.icon))&&Date.now()-Date.parse(p.checkedAt)<(p.status==='failed'?300000:86400000))continue;pending.add(id);queue.push(id)}drain()},dispose(){disposed=true;abort.abort();queue.length=0;pending.clear()}}
+  return {enqueue(ids:string[]){for(const id of ids.slice(0,60)){if(pending.has(id)||queue.length>=120)continue;const b=service.find(id);if(!b||b.deletedAt)continue;const p=b.preview;if(p&&(!p.image||media.media(p.image))&&(!p.icon||media.media(p.icon))&&!previewNeedsRefresh(p))continue;pending.add(id);queue.push(id)}drain()},dispose(){disposed=true;abort.abort();queue.length=0;pending.clear()}}
 }

@@ -87,6 +87,6 @@ export class SqliteBookmarksRepository implements BookmarksRepository {
     this.db.prepare('INSERT OR REPLACE INTO preview_media VALUES(?,?,?,?)').run(id,mime,body,new Date().toISOString())
     this.db.exec('DELETE FROM preview_media WHERE id NOT IN(SELECT id FROM preview_media ORDER BY usedAt DESC LIMIT 256)')
   }
-  media(id:string){return this.db.prepare('SELECT mime,body FROM preview_media WHERE id=?').get(id) as {mime:string;body:Uint8Array}|undefined}
+  media(id:string){const value=this.db.prepare('SELECT mime,body FROM preview_media WHERE id=?').get(id) as {mime:string;body:Uint8Array}|undefined;if(value)this.db.prepare('UPDATE preview_media SET usedAt=? WHERE id=?').run(new Date().toISOString(),id);return value}
   close(){this.db.close()}
 }
