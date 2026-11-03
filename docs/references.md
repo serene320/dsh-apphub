@@ -144,3 +144,12 @@ DSH 源码基线 0.2.1-rc.5，commit b830ec950faba0a46dda564be3e2d854afed94f1。
 - [GitHub Starring API](https://docs.github.com/en/rest/activity/starring)：用户 Stars、分页、Star 时间、认证访问范围；fine-grained token 使用 Starring read 权限。
 - [GitHub OAuth App 注册](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app)：自己的应用与 device flow 配置，不能把宿主通用授权框架当作现成 GitHub 登录。
 - [Karakeep 导入](https://docs.karakeep.com/using-karakeep/import/)：Netscape HTML 路径；仅参考格式与交互，不复制其 AGPL 实现。
+
+## 代理与批量打开复用核查（2026-11-03）
+
+- `packages/util/http-proxy/src/index.ts`：公开 proxyRouteFor，策略由宿主启动安装，AppHub 只消费。rc.5 不自动读取 macOS 系统代理。
+- `packages/web/web-fetch-http/src/provider.ts`：官方 HTML 抓取按代理路由与直连分别处理 DNS；直连保留公网校验和连接固定。
+- `apps/desktop/src/main.ts`：setWindowOpenHandler 对 HTTP/HTTPS 调用 shell.openExternal；客户端复用 window.open，无自建 IPC。
+- browserUse 是 provider 注册和 agent 资源能力；未发现适合后台批量封面的公开截图服务。不能用侧栏浏览器绕过后台安全校验。
+
+开发接入注意：dsh-http-proxy 为 peer dependency，必须与实际 Host 解析到同一个模块实例，rc.5 的路由策略是模块内状态。本机插件的该 peer 已链接到当前 Host 的公开包；npm ci 后须重新确认 peer 解析，不能自行再初始化一套代理。源码和锁文件不包含本机绝对路径。
