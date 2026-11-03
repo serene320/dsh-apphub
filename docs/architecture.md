@@ -128,4 +128,4 @@ HTML 文件选择 → Host parse5 解析 → 同一业务校验与导入事务
 
 GitHub 凭据、实时同步、跨窗口通知和任务重启恢复尚未实现。源码能力核查保留在 references.md，不等同于产品功能。
 
-收藏夹默认紧凑列表，可切换小卡片。⌘/Ctrl 点击进入多选，显式“打开所选”复用桌面 window.open → shell.openExternal；切换筛选/分页清空选择，Escape 取消。只打开当前页可见条目，URL 先整批校验再打开。
+收藏夹默认紧凑列表，可切换小卡片。⌘/Ctrl 点选后松开修饰键打开，普通“多选”入口保留显式打开；移除全选。打开复用桌面 window.open → shell.openExternal；切换筛选/分页清空选择，Escape 取消。只打开当前页可见条目，URL 先整批校验再打开。
