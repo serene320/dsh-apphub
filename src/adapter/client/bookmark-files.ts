@@ -7,9 +7,5 @@ export function chooseBookmarkFile(onRead:(html:string)=>void,onError:(message:s
  input.addEventListener('change',()=>{const file=input.files?.[0];cleanup();if(!file)return;if(file.size>10*1024*1024){onError('书签文件不能超过 10 MB。');return}void file.text().then(onRead,()=>onError('文件读取失败。'))},{once:true})
  document.body.append(input);input.click()
 }
-export function openBookmark(url:string){openBookmarks([url])}
-/** DSH's existing desktop window-open handler delegates HTTP(S) URLs to the system browser. */
-export function openBookmarks(urls:readonly string[]){
- const targets=[...new Set(urls.map(bookmarkUrl))]
- for(const url of targets)window.open(url,'_blank','noopener,noreferrer')
-}
+/** Reuse the DSH desktop handler, validating the URL before opening. */
+export function openBookmark(url:string){window.open(bookmarkUrl(url),'_blank','noopener,noreferrer')}
