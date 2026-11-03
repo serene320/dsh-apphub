@@ -82,5 +82,8 @@
   },
   "overrides": {
     "zod": "$zod"
+  },
+  "dependencies": {
+    "parse5": "8.0.0"
   }
 }

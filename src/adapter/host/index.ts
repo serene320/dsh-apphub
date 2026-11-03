@@ -1,3 +1,5 @@
+import {parseBookmarkHtml} from './bookmark-import.ts'
+import type {Bookmark,BookmarkInput,BookmarkResult,BookmarkImportPreview,BookmarkImportResult} from '../../contracts.ts'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { Context } from '@deepseek-ai/cordis'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
@@ -13,11 +15,13 @@ declare module '@deepseek-ai/cordis' {
   interface Context { apphub: AppHubService }
 }
 export class AppHubService extends TypertRemoteService {
+  private bookmarks?:ReturnType<typeof openAppHub>['bookmarks']
   private application: AppHubApplication
   constructor(ctx: Context) {
     super(ctx, 'apphub')
     const runtime = openAppHub(join(process.env.DSH_HOME || join(homedir(), '.dsh'), 'apphub'))
     this.application = runtime.service
+    this.bookmarks=runtime.bookmarks
     ctx.effect(() => () => runtime.close())
     ctx.inject(['tools'], toolContext => {
       toolContext.tools.register(defineTool({
@@ -36,6 +40,17 @@ export class AppHubService extends TypertRemoteService {
       }))
     })
   }
+  private bookmarkService(){if(!this.bookmarks)throw Error('收藏夹暂不可用。');return this.bookmarks}
+  @Remote('listBookmarks')
+  listBookmarks(signal:AbortSignal):Bookmark[]{signal.throwIfAborted();return this.bookmarkService().list()}
+  @Remote('saveBookmark')
+  saveBookmark(input:BookmarkInput,signal:AbortSignal):BookmarkResult{signal.throwIfAborted();return this.bookmarkService().save(input)}
+  @Remote('removeBookmark')
+  removeBookmark(id:string,revision:number,signal:AbortSignal):boolean{signal.throwIfAborted();return this.bookmarkService().remove(id,revision)}
+  @Remote('previewBookmarks')
+  previewBookmarks(html:string,signal:AbortSignal):BookmarkImportPreview{signal.throwIfAborted();return parseBookmarkHtml(html)}
+  @Remote('importBookmarks')
+  importBookmarks(html:string,signal:AbortSignal):BookmarkImportResult{signal.throwIfAborted();const parsed=parseBookmarkHtml(html);const result=this.bookmarkService().importItems(parsed.items);return {...result,skipped:result.skipped+parsed.skipped}}
   @Remote('settings')
   settings(scope: SettingsScope, signal: AbortSignal): HubSettings { signal.throwIfAborted(); return this.application.settings(scope) }
   @Remote('saveSettings')

@@ -6,7 +6,7 @@ import type { HubSnapshot } from '../src/contracts.ts'
 
 test('host validates correlation and reports the available notes app', () => {
   const id = crypto.randomUUID()
-  assert.deepEqual(readHub(id, () => new Date('2026-11-03T00:00:00Z')), { requestId: id, checkedAt: '2026-11-03T00:00:00.000Z', apps: [{ id: 'notes', name: '备忘录', description: '随手记录，留住想法。' }] })
+  assert.deepEqual(readHub(id, () => new Date('2026-11-03T00:00:00Z')), { requestId: id, checkedAt: '2026-11-03T00:00:00.000Z', apps: [{ id: 'notes', name: '备忘录', description: '随手记录，留住想法。' },{id:'bookmarks',name:'收藏夹',description:'收藏链接，整理值得留下的内容。'}] })
   assert.throws(() => readHub('bad'), /INVALID_REQUEST_ID/)
 })
 test('repeated clicks coalesce; an actual response is required for ready', async () => {

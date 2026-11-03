@@ -1,3 +1,8 @@
+import {createBookmarksController} from '../../application/bookmarks-controller.ts'
+import {chooseBookmarkFile,openBookmark} from './bookmark-files.ts'
+import {Bookmarks} from '../../ui/Bookmarks.tsx'
+import {apps} from '../../application/hub.ts'
+import bookmarksCss from '../../ui/bookmarks.css'
 import React, { useEffect, useState, useSyncExternalStore } from 'react'
 import type { Context } from '@deepseek-ai/cordis'
 import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
@@ -17,7 +22,7 @@ import { createTaskRunner } from './task-runner.ts'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { TaskActivity } from '../../ui/TaskActivity.tsx'
 import { TaskComposer } from '../../ui/TaskComposer.tsx'
-import { NotesIcon } from '../../ui/Icons.tsx'
+import { NotesIcon, BookmarkIcon } from '../../ui/Icons.tsx'
 import { Home, HubIcon } from '../../ui/Home.tsx'
 import { Notes } from '../../ui/Notes.tsx'
 import { Settings } from '../../ui/Settings.tsx'
@@ -30,11 +35,12 @@ export const inject = ['slots', 'layout', 'remote', 'sessions', 'uiWorkspace']
 type NotesController = ReturnType<typeof createNotesController>
 type SettingsController = ReturnType<typeof createSettingsController>
 type Runner = ReturnType<typeof createTaskRunner>
-interface SurfaceProps { port: HubPort; notes: NotesController; settings: SettingsController; noteSettings: SettingsController; runner: Runner }
-function Surface({port,notes,settings,noteSettings,runner}:SurfaceProps) {
+interface SurfaceProps { bookmarks:ReturnType<typeof createBookmarksController>; port: HubPort; notes: NotesController; settings: SettingsController; noteSettings: SettingsController; runner: Runner }
+function Surface({port,notes,settings,noteSettings,runner,bookmarks}:SurfaceProps) {
   const [prompt,setPrompt]=useState('')
   const [home] = useState(()=>createHomeController(port))
   const [page,setPage]=useState('notes')
+  const bookmarkState=useSyncExternalStore(bookmarks.subscribe,bookmarks.getSnapshot)
   const [settingsOpen,setSettingsOpen]=useState<'hub'|'notes'|null>(null), [inputError,setInputError]=useState('')
   const homeState=useSyncExternalStore(home.subscribe,home.getSnapshot)
   const notesState=useSyncExternalStore(notes.subscribe,notes.getSnapshot)
@@ -43,8 +49,9 @@ function Surface({port,notes,settings,noteSettings,runner}:SurfaceProps) {
   const selectedSettings=settingsOpen==='notes'?noteSettings:settings
   const selectedPreferences=settingsOpen==='notes'?notePreferences:preferences
   const task=useSyncExternalStore(runner.subscribe,runner.getSnapshot)
-  useEffect(()=>{void home.refresh();void notes.load();return()=>home.dispose()},[home])
+  useEffect(()=>{void home.refresh();void notes.load();void bookmarks.load();return()=>home.dispose()},[home])
   const openNotes=()=>{setPage('notes');if(!notes.getSnapshot().loaded)void notes.load()}
+  const openApp=(id:string)=>{if(id==='notes')openNotes();else if(id==='bookmarks'){setPage('bookmarks');void bookmarks.load()}}
   const submit=async(text:string)=>{
     try {
       const command=resolveTask(text,'notes')
@@ -56,16 +63,16 @@ function Surface({port,notes,settings,noteSettings,runner}:SurfaceProps) {
   }
   return <div className="apphub-shell" data-appearance={page==='notes'?notePreferences.value.appearance:preferences.value.appearance}>
     <div className="hub-workspace">
-    <nav className="hub-navigation" aria-label="AppHub 应用导航"><Button size="sm" variant="ghost" aria-pressed={page==='home'} onClick={()=>setPage('home')}><HubIcon size={16}/>AppHub</Button><span className="hub-navigation-label">应用</span><Button size="sm" variant="ghost" aria-pressed={page==='notes'} onClick={openNotes}><NotesIcon size={18}/>备忘录</Button></nav>
+    <nav className="hub-navigation" aria-label="AppHub 应用导航"><Button size="sm" variant="ghost" aria-pressed={page==='home'} onClick={()=>setPage('home')}><HubIcon size={16}/>AppHub</Button><span className="hub-navigation-label">应用</span>{apps.map(app=><Button key={app.id} size="sm" variant="ghost" aria-pressed={page===app.id} onClick={()=>openApp(app.id)}>{app.id==='notes'?<NotesIcon size={18}/>:<BookmarkIcon size={18}/ >}{app.name}</Button>)}</nav>
     <div className="hub-workspace-main">
     <div className="hub-workspace-content">
-    {page==='home'?<Home state={homeState} onRefresh={()=>{void home.refresh()}} onOpen={openNotes} onSettings={()=>setSettingsOpen('hub')} onAppSettings={()=>setSettingsOpen('notes')} onTask={openNotes}/>:<>
+    {page==='home'?<Home state={homeState} onRefresh={()=>{void home.refresh()}} onOpen={openApp} onSettings={()=>setSettingsOpen('hub')} onAppSettings={()=>setSettingsOpen('notes')} onTask={openApp}/>:page==='bookmarks'?<Bookmarks state={bookmarkState} appearance={preferences.value.appearance} onSave={bookmarks.save} onRemove={bookmarks.remove} onImport={()=>chooseBookmarkFile(html=>{void bookmarks.preview(html)},bookmarks.reportError)} onConfirmImport={()=>{void bookmarks.importHtml()}} onCloseImport={bookmarks.clearImport} onOpen={openBookmark} onReload={()=>{void bookmarks.load()}}/>:<>
 
 
       <Notes appearance={notePreferences.value.appearance} onArchive={async archived=>{const ok=await notes.setArchived(archived);if(ok)notes.close();return ok}} onCloseEditor={notes.closeEditor} state={notesState} onSettings={()=>setSettingsOpen('notes')} onCreate={()=>notes.create()} onSelect={notes.select} onEdit={notes.edit} onSave={()=>{void notes.save()}} onRestore={notes.restore} onReload={()=>{void notes.load()}}/>
     </>}
     </div>
-    <TaskComposer prompt={prompt} onPromptChange={setPrompt} onSubmit={submit} taskBusy={task.busy} error={inputError} target="备忘录" activity={<TaskActivity tasks={task.tasks} onOpen={runner.openSession} onDismiss={runner.dismiss}/>}/>
+    {page!=='bookmarks'&&<TaskComposer prompt={prompt} onPromptChange={setPrompt} onSubmit={submit} taskBusy={task.busy} error={inputError} target="备忘录" activity={<TaskActivity tasks={task.tasks} onOpen={runner.openSession} onDismiss={runner.dismiss}/>}/>}
     </div></div>
     {settingsOpen&&<Settings scope={settingsOpen} value={selectedPreferences.value} busy={selectedPreferences.busy} error={selectedPreferences.error} loaded={selectedPreferences.loaded} onRetry={()=>{void selectedSettings.load()}} onSave={selectedSettings.save} onClose={()=>setSettingsOpen(null)}/>}
   </div>
@@ -73,7 +80,7 @@ function Surface({port,notes,settings,noteSettings,runner}:SurfaceProps) {
 export async function apply(ctx: Context) {
   const unmountRemote = await ctx.remote.$mount(remote)
   ctx.effect(() => unmountRemote)
-  const style = document.createElement('style'); style.dataset.apphub='home'; style.textContent=css+notesCss+appearanceCss
+  const style = document.createElement('style'); style.dataset.apphub='home'; style.textContent=css+notesCss+appearanceCss+bookmarksCss
   ctx.effect(()=>{document.head.append(style);return()=>style.remove()})
   ctx.inject(['remote.apphub'], scope=>{
     const port:HubPort={read:async(id,signal)=>{const r=await scope.remote.apphub.read(id,signal);if(!r.ok)throw Error(r.error.code);return r.value}}
@@ -81,6 +88,24 @@ export async function apply(ctx: Context) {
       list:async signal=>{const r=await scope.remote.apphub.listNotes(signal);if(!r.ok)throw Error(r.error.code);return r.value},
       save:async(input,signal)=>{const r=await scope.remote.apphub.saveNote(input,signal);if(!r.ok)throw Error(r.error.code);return r.value},
     },createDraftJournal(localStorage))
+    const bookmarkRequests=new Set<AbortController>()
+    async function bookmarkRequest<T>(call:(signal:AbortSignal)=>Promise<T>):Promise<T>{
+      const abort=new AbortController();bookmarkRequests.add(abort)
+      let timer:ReturnType<typeof setTimeout>|undefined
+      try{return await Promise.race([call(abort.signal),new Promise<never>((_,reject)=>{
+        const cancel=()=>reject(Error('操作尚未确认，请刷新检查后重试。'))
+        abort.signal.addEventListener('abort',cancel,{once:true})
+        timer=setTimeout(()=>abort.abort(),15000)
+      })])}finally{clearTimeout(timer);bookmarkRequests.delete(abort)}
+    }
+    scope.effect(()=>()=>{for(const request of bookmarkRequests)request.abort();bookmarkRequests.clear()})
+    const bookmarks=createBookmarksController({
+      list:async()=>{const r=await bookmarkRequest(signal=>scope.remote.apphub.listBookmarks(signal));if(!r.ok)throw Error(r.error.code);return r.value},
+      save:async input=>{const r=await bookmarkRequest(signal=>scope.remote.apphub.saveBookmark(input,signal));if(!r.ok)throw Error(r.error.message||r.error.code);return r.value},
+      remove:async(id,revision)=>{const r=await bookmarkRequest(signal=>scope.remote.apphub.removeBookmark(id,revision,signal));if(!r.ok)throw Error(r.error.code);return r.value},
+      preview:async html=>{const r=await bookmarkRequest(signal=>scope.remote.apphub.previewBookmarks(html,signal));if(!r.ok)throw Error(r.error.message||'书签文件无效。');return r.value},
+      importHtml:async html=>{const r=await bookmarkRequest(signal=>scope.remote.apphub.importBookmarks(html,signal));if(!r.ok)throw Error(r.error.message||'导入失败。');return r.value},
+    })
     const makeSettings=(kind:'hub'|'notes')=>createSettingsController({
       read:async()=>{const r=await scope.remote.apphub.settings(kind,new AbortController().signal);if(!r.ok)throw Error(r.error.code);return r.value},
       save:async value=>{const r=await scope.remote.apphub.saveSettings(kind,value,new AbortController().signal);if(!r.ok)throw Error(r.error.code);return r.value},
@@ -88,7 +113,7 @@ export async function apply(ctx: Context) {
     const settings=makeSettings('hub'),noteSettings=makeSettings('notes')
     void settings.load();void noteSettings.load()
     const runner=createTaskRunner(scope,notes)
-    scope.effect(()=>()=>{runner.dispose();notes.dispose()})
+    scope.effect(()=>()=>{runner.dispose();notes.dispose();bookmarks.dispose()})
     // Flush early on backgrounding; a synchronous journal protects edits if teardown wins.
     scope.effect(()=>{
       const flush=()=>{if(notes.getSnapshot().dirty)void notes.save()}
@@ -106,7 +131,7 @@ export async function apply(ctx: Context) {
       return()=>{clearTimeout(timer);offNotes()}
     })
     scope.slots.inject('main',function*(){
-      yield scope.slots.register({name:'main',key:PANEL},()=> <Surface port={port} notes={notes} settings={settings} noteSettings={noteSettings} runner={runner}/>)
+      yield scope.slots.register({name:'main',key:PANEL},()=> <Surface bookmarks={bookmarks} port={port} notes={notes} settings={settings} noteSettings={noteSettings} runner={runner}/>)
       yield ()=>{if(scope.layout.panelInfo.getSnapshot().activePanelId===PANEL)scope.layout.selectPanel(null)}
     })
     scope.slots.inject('sidebar.panellist',()=>scope.slots.register({name:'sidebar.panellist',id:PANEL,order:20,label:'AppHub'},HubIcon))
