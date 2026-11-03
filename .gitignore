@@ -1,0 +1,29 @@
+# Dependencies and generated output
+node_modules/
+lib/
+.build/
+coverage/
+*.tsbuildinfo
+*.tgz
+
+# Local runtime and persisted user data
+.runtime/
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-*
+*.log
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+
+# OS metadata
+.DS_Store
+._*
