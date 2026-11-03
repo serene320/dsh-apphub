@@ -97,3 +97,11 @@ test('next batch failure preserves loaded bookmarks and explicit reload allows r
  fail=false;await controller.load();await controller.loadMore();assert.equal(controller.getSnapshot().items.length,61)
  }finally{controller.dispose()}
 })
+
+test('search keeps current results during debounce then replaces them without stale actions',async()=>{
+ const rows=[{id:'old',preview:{status:'ready',checkedAt:new Date().toISOString()}}]
+ const controller=createBookmarksController({query:async(q:string)=>({items:q?[]:rows,total:q?0:1,collections:[]})} as any)
+ try{await controller.load();controller.filter('missing','');assert.equal(controller.getSnapshot().loaded,true);assert.equal(controller.getSnapshot().loading,true);assert.equal(controller.getSnapshot().items[0]?.id,'old')
+ await controller.load();assert.equal(controller.getSnapshot().loading,false);assert.deepEqual(controller.getSnapshot().items,[])
+ }finally{controller.dispose()}
+})

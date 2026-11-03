@@ -1,5 +1,5 @@
-.bookmarks-page{flex:1;min-height:0;overflow:auto;padding:calc(20px + var(--dsh-frame-top-clearance,0px)) 24px 20px;color:var(--dsw-alias-label-primary)}
-.bookmarks-heading,.bookmarks-toolbar,.bookmarks-collections,.bookmarks-grid,.bookmarks-load-more,.bookmarks-group-search,.bookmark-selection-bar{max-width:1100px;margin-inline:auto}
+.bookmarks-page{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;padding:calc(20px + var(--dsh-frame-top-clearance,0px)) 24px 20px;color:var(--dsw-alias-label-primary)}
+.bookmarks-heading,.bookmarks-toolbar,.bookmarks-collections,.bookmarks-grid,.bookmarks-load-more,.bookmarks-group-search{max-width:1100px;margin-inline:auto}
 .bookmarks-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .bookmarks-heading h1{display:flex;align-items:center;gap:8px;font-size:20px;line-height:28px;margin:0;font-weight:500}
 .bookmarks-actions{display:flex;gap:8px}
@@ -36,13 +36,13 @@
 .bookmarks-list[data-selecting=true] .bookmark-item{grid-template-columns:24px minmax(0,1fr) auto 28px}
 .bookmarks-cards .bookmark-select{position:absolute;right:40px;bottom:5px;z-index:1;background:var(--dsw-alias-bg-layer-1)}
 
-.bookmark-selection-bar{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px}.bookmark-selection-bar>span{margin-right:auto}
+
 .bookmarks-load-more{display:flex;align-items:center;justify-content:center;gap:10px;min-height:32px;margin-top:12px;color:var(--dsw-alias-label-secondary);font-size:12px}.bookmarks-load-more>span:first-child{margin-right:auto}
 .bookmarks-group-search{margin-top:8px}.bookmarks-group-search>span{max-width:240px}
 .bookmarks-empty{padding:64px 16px;text-align:center;color:var(--dsw-alias-label-secondary)}.bookmarks-empty h2{font-size:15px;font-weight:500}.bookmarks-error{max-width:900px;margin:12px auto;font-size:13px}.bookmark-dialog{width:min(520px,calc(100vw - 32px));color:var(--dsw-alias-label-primary)}.bookmark-dialog *{box-sizing:border-box}.bookmark-form{border:0;margin:0;padding:0;min-width:0;display:flex;flex-direction:column;gap:14px}.bookmark-form label{display:flex;flex-direction:column;gap:6px;font-size:12px}.bookmark-form textarea{resize:vertical;min-height:80px;max-height:180px;border:1px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-md);background:var(--dsw-alias-bg-layer-1);color:inherit;padding:10px;font:inherit;line-height:20px}.bookmark-import-preview{max-height:250px;overflow:auto}.bookmark-import-preview p{font-size:13px;margin:0;padding:8px 0;border-bottom:1px solid var(--dsw-alias-border-l2)}.bookmark-import-preview small{display:block;color:var(--dsw-alias-label-secondary);margin-top:4px}.bookmark-form p{font-size:12px}
 
 .bookmark-details{border-top:1px solid var(--dsw-alias-border-l2);padding-top:10px;color:var(--dsw-alias-label-secondary);font-size:12px}.bookmark-details>button{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis}.bookmark-details>div{display:flex;align-items:center;justify-content:space-between}
-@container(max-width:600px){.bookmarks-page{padding:20px 16px}.bookmarks-heading{flex-wrap:wrap}.bookmarks-list .bookmark-tags{display:none}.bookmarks-list .bookmark-item{grid-template-columns:minmax(0,1fr) 28px}.bookmarks-list[data-selecting=true] .bookmark-item{grid-template-columns:24px minmax(0,1fr) 28px}.bookmarks-list .bookmark-domain{max-width:110px}.bookmark-selection-bar{gap:4px}}
+@container(max-width:600px){.bookmarks-page{padding:20px 16px}.bookmarks-heading{flex-wrap:wrap}.bookmarks-list .bookmark-tags{display:none}.bookmarks-list .bookmark-item{grid-template-columns:minmax(0,1fr) 28px}.bookmarks-list[data-selecting=true] .bookmark-item{grid-template-columns:24px minmax(0,1fr) 28px}.bookmarks-list .bookmark-domain{max-width:110px}}
 
 /* Business card surface; native buttons retain their own keyboard and action semantics. */
 .bookmarks-cards .bookmark-item{display:flex;flex-direction:column;min-height:148px}
@@ -63,3 +63,11 @@
 .bookmarks-page .bookmark-item button:not(.bookmark-open):focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:-2px}
 .bookmarks-toolbar{gap:12px}.bookmarks-toolbar>span:first-child{max-width:none}
 @container(max-width:600px){.bookmarks-grid{grid-template-columns:1fr}.bookmarks-toolbar{gap:6px}.bookmarks-list .bookmark-title-line{flex-direction:column;gap:0}.bookmarks-cards .bookmark-item{min-height:150px}}
+
+.bookmarks-page>header,.bookmarks-page>.bookmarks-toolbar,.bookmarks-page>.bookmarks-collections,.bookmarks-page>.bookmarks-group-search{width:100%;flex-shrink:0}
+.bookmarks-results{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:4px;margin:-4px;scrollbar-gutter:stable}
+.bookmarks-results[aria-busy=true]{opacity:.65;pointer-events:none}
+.bookmarks-search{position:relative;flex:1;min-width:0}
+.bookmarks-search>span{display:flex;width:100%;box-sizing:border-box;padding-right:32px}
+.bookmarks-search>button{position:absolute;right:3px;top:2px;width:28px;padding:0}
+.bookmarks-load-more:empty{min-height:1px;margin-top:0}

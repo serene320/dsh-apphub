@@ -3,9 +3,9 @@ import {
   IconSearchOutlineRegular, IconPlusOutlineRegular, IconSettingsOutlineRegular,
   IconCloseOutlineRegular, IconPinOutlineRegular, IconArchiveOutlineRegular,
   IconUnarchiveOutlineRegular, IconEllipsisOutlineRegular, IconCheckOutlineRegular,
-  IconRefreshOutlineRegular, IconDeliverDocRegular,
+  IconRefreshOutlineRegular, IconDeliverDocRegular, IconEditOutlineRegular,
 } from '@deepseek-ai/dsh-client-ui-primitives'
-const icons={note:IconDeliverDocRegular,search:IconSearchOutlineRegular,plus:IconPlusOutlineRegular,
+const icons={edit:IconEditOutlineRegular,note:IconDeliverDocRegular,search:IconSearchOutlineRegular,plus:IconPlusOutlineRegular,
   settings:IconSettingsOutlineRegular,close:IconCloseOutlineRegular,pin:IconPinOutlineRegular,
   archive:IconArchiveOutlineRegular,restore:IconUnarchiveOutlineRegular,more:IconEllipsisOutlineRegular,
   check:IconCheckOutlineRegular,save:IconRefreshOutlineRegular}

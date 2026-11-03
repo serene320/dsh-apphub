@@ -42,9 +42,10 @@ function Surface({port,notes,settings,noteSettings,runner,bookmarks}:SurfaceProp
   const [prompt,setPrompt]=useState('')
   const [home] = useState(()=>createHomeController(port))
   const [page,setPage]=useState('notes')
+  const [bookmarkView,setBookmarkView]=useState('list')
   const bookmarkState=useSyncExternalStore(bookmarks.subscribe,bookmarks.getSnapshot)
   const media=useBookmarkMedia(bookmarkState.items)
-  const loadMoreRef=useBookmarkLoadMore(page==='bookmarks'&&bookmarkState.loaded&&!bookmarkState.loading&&!bookmarkState.loadingMore&&!bookmarkState.busy&&!bookmarkState.error&&bookmarkState.items.length<bookmarkState.total,bookmarkState.items.length,bookmarks.loadMore)
+  const {sentinel:loadMoreRef,viewport:bookmarkViewport}=useBookmarkLoadMore(page==='bookmarks'&&bookmarkState.loaded&&!bookmarkState.loading&&!bookmarkState.loadingMore&&!bookmarkState.busy&&!bookmarkState.error&&bookmarkState.items.length<bookmarkState.total,bookmarkState.items.length,bookmarks.loadMore,bookmarkState.query+'\0'+bookmarkState.collection)
   const [settingsOpen,setSettingsOpen]=useState<'hub'|'notes'|null>(null), [inputError,setInputError]=useState('')
   const homeState=useSyncExternalStore(home.subscribe,home.getSnapshot)
   const notesState=useSyncExternalStore(notes.subscribe,notes.getSnapshot)
@@ -70,7 +71,7 @@ function Surface({port,notes,settings,noteSettings,runner,bookmarks}:SurfaceProp
     <nav className="hub-navigation" aria-label="AppHub 应用导航"><Button size="sm" variant="ghost" aria-pressed={page==='home'} onClick={()=>setPage('home')}><HubIcon size={16}/>AppHub</Button><span className="hub-navigation-label">应用</span>{apps.map(app=><Button key={app.id} size="sm" variant="ghost" aria-pressed={page===app.id} onClick={()=>openApp(app.id)}>{app.id==='notes'?<NotesIcon size={18}/>:<BookmarkIcon size={18}/ >}{app.name}</Button>)}</nav>
     <div className="hub-workspace-main">
     <div className="hub-workspace-content">
-    {page==='home'?<Home state={homeState} onRefresh={()=>{void home.refresh()}} onOpen={openApp} onSettings={()=>setSettingsOpen('hub')} onAppSettings={()=>setSettingsOpen('notes')} onTask={openApp}/>:page==='bookmarks'?<Bookmarks onOpenMany={openBookmarks} onRefreshPreview={id=>{void bookmarks.refreshPreview(id)}} media={media} onFilter={bookmarks.filter} loadMoreRef={loadMoreRef} state={bookmarkState} appearance={preferences.value.appearance} onSave={bookmarks.save} onRemove={bookmarks.remove} onImport={()=>chooseBookmarkFile(html=>{void bookmarks.preview(html)},bookmarks.reportError)} onConfirmImport={()=>{void bookmarks.importHtml()}} onCloseImport={bookmarks.clearImport} onOpen={openBookmark} onReload={()=>{void bookmarks.load()}}/>:<>
+    {page==='home'?<Home state={homeState} onRefresh={()=>{void home.refresh()}} onOpen={openApp} onSettings={()=>setSettingsOpen('hub')} onAppSettings={()=>setSettingsOpen('notes')} onTask={openApp}/>:page==='bookmarks'?<Bookmarks view={bookmarkView} onViewChange={setBookmarkView} viewportRef={bookmarkViewport} onOpenMany={openBookmarks} onRefreshPreview={id=>{void bookmarks.refreshPreview(id)}} media={media} onFilter={bookmarks.filter} loadMoreRef={loadMoreRef} state={bookmarkState} appearance={preferences.value.appearance} onSave={bookmarks.save} onRemove={bookmarks.remove} onImport={()=>chooseBookmarkFile(html=>{void bookmarks.preview(html)},bookmarks.reportError)} onConfirmImport={()=>{void bookmarks.importHtml()}} onCloseImport={bookmarks.clearImport} onOpen={openBookmark} onReload={()=>{void bookmarks.load()}}/>:<>
 
 
       <Notes appearance={notePreferences.value.appearance} onArchive={async archived=>{const ok=await notes.setArchived(archived);if(ok)notes.close();return ok}} onCloseEditor={notes.closeEditor} state={notesState} onSettings={()=>setSettingsOpen('notes')} onCreate={()=>notes.create()} onSelect={notes.select} onEdit={notes.edit} onSave={()=>{void notes.save()}} onRestore={notes.restore} onReload={()=>{void notes.load()}}/>
