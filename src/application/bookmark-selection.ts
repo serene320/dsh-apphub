@@ -6,3 +6,9 @@ export function selectedBookmarkUrls(items:readonly {id:string;url:string}[],sel
   const ids=new Set(selected)
   return [...new Set(items.filter(item=>ids.has(item.id)).map(item=>item.url))]
 }
+
+export function bookmarkModifierRelease(selecting:boolean,modifierSelection:boolean,selectedCount:number):'open'|'clear'|'none'{
+  if(!selecting)return 'none'
+  if(selectedCount===0)return 'clear'
+  return modifierSelection?'open':'none'
+}

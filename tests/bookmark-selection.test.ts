@@ -16,3 +16,13 @@ test('batch open validates every URL before invoking the existing desktop bridge
   assert.throws(()=>openBookmarks(['https://example.com/new','javascript:alert(1)']));assert.equal(opened.length,2)
  }finally{root.window=old}
 })
+
+test('modifier release exits empty selection including manual mode and toggled-off items',async()=>{
+ const {bookmarkModifierRelease,toggleBookmarkSelection}=await import('../src/application/bookmark-selection.ts')
+ assert.equal(bookmarkModifierRelease(true,false,0),'clear')
+ const selected=toggleBookmarkSelection(toggleBookmarkSelection([],'a'),'a')
+ assert.equal(bookmarkModifierRelease(true,true,selected.length),'clear')
+ assert.equal(bookmarkModifierRelease(true,true,1),'open')
+ assert.equal(bookmarkModifierRelease(true,false,1),'none')
+ assert.equal(bookmarkModifierRelease(false,false,0),'none')
+})
