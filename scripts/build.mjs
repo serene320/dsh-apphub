@@ -31,6 +31,8 @@ const model = new WorkspaceAnalyzer({ root: workspace, packages: ['dsh-apphub'],
 const artifacts = model.faces.map(face => ({ ...new FaceModelEmitter(face).emit('dsh-apphub'), packageRoot: 'packages/apphub' }))
 if (!artifacts.some(a => a.remote)) throw new Error('No Remote contribution generated')
 writePackageArtifacts(root, artifacts)
+// Remove declarations for source files that were deleted or renamed.
+await rm('lib/types', { recursive: true, force: true })
 for (const face of ['host', 'client']) execFileSync(process.execPath, ['node_modules/typescript/bin/tsc', '-p', `tsconfig.${face}.json`, '--noEmit', 'false', '--declaration', '--emitDeclarationOnly', '--outDir', 'lib/types', '--rootDir', 'src'], { stdio: 'inherit' })
 await writeFile('lib/contracts.js', 'export {};\n')
 await build({ entryPoints: ['src/adapter/host/index.ts'], outfile: 'lib/index.js', bundle: true, packages: 'external', platform: 'node', format: 'esm', target: 'node24', plugins: [{ name: 'standard-decorators', setup(b) { b.onLoad({ filter: /\.ts$/ }, async ({ path }) => ({ contents: ts.transpileModule(await readFile(path, 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2024, module: ts.ModuleKind.ESNext } }).outputText, loader: 'js', resolveDir: resolve(path, '..') })) } }] })
