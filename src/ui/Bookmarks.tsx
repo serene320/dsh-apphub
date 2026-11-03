@@ -1,4 +1,4 @@
-import {toggleBookmarkSelection,selectedBookmarkUrls,bookmarkModifierRelease} from '../application/bookmark-selection.ts'
+import {selectedBookmarkUrls,createBookmarkSelection} from '../application/bookmark-selection.ts'
 import React,{useEffect,useRef,useState} from 'react'
 import {Button,Input,Modal,SegmentedTabs} from '@deepseek-ai/dsh-client-ui-primitives'
 import type {Bookmark,BookmarkInput} from '../contracts.ts'
@@ -13,29 +13,31 @@ export function Bookmarks({watchModifiers,view,onViewChange:setView,viewportRef,
  const [collectionQuery,setCollectionQuery]=useState(''),[draft,setDraft]=useState<BookmarkInput|null>(null),[remove,setRemove]=useState<Bookmark|null>(null),[dirty,setDirty]=useState(false),[discard,setDiscard]=useState(false)
  const collections=state.collections.filter(c=>c.toLowerCase().includes(collectionQuery.toLowerCase())).slice(0,20)
  const items=state.items
- const [selected,setSelected]=useState<string[]>([]),[selecting,setSelecting]=useState(false)
- useEffect(()=>{modifierSelection.current=false;setSelected([]);setSelecting(false)},[state.query,state.collection])
+ const [selectionModel]=useState(createBookmarkSelection)
+ const [selection,setSelection]=useState(selectionModel.snapshot)
+ const {selected,selecting}=selection
+ const syncSelection=()=>setSelection(selectionModel.snapshot())
+ const clearSelection=()=>{selectionModel.clear();syncSelection()}
+ useEffect(clearSelection,[state.query,state.collection])
  const visibleIds=items.map(item=>item.id).join(',')
- useEffect(()=>{setSelected(ids=>ids.filter(id=>items.some(item=>item.id===id)))},[visibleIds])
- const modifierSelection=useRef(false)
- const clearSelection=()=>{modifierSelection.current=false;setSelected([]);setSelecting(false)}
- const toggle=(id:string)=>{setSelecting(true);setSelected(ids=>toggleBookmarkSelection(ids,id))}
- const openSelected=()=>{const urls=selectedBookmarkUrls(items,selected);clearSelection();if(urls.length)onOpenMany(urls)}
- const activate=(event:React.MouseEvent,id:string,url:string)=>{if(event.metaKey||event.ctrlKey||selecting){event.preventDefault();if(event.metaKey||event.ctrlKey)modifierSelection.current=true;toggle(id)}else onOpen(url)}
+ useEffect(()=>{selectionModel.retain(items.map(item=>item.id));syncSelection()},[visibleIds])
+ const toggle=(id:string,modifier=false)=>{selectionModel.toggle(id,modifier);syncSelection()}
+ const openSelected=()=>{const ids=selectionModel.take();syncSelection();const urls=selectedBookmarkUrls(items,ids);if(urls.length)onOpenMany(urls)}
+ const activate=(event:React.MouseEvent,id:string,url:string)=>{if(event.metaKey||event.ctrlKey||selectionModel.snapshot().selecting){event.preventDefault();toggle(id,event.metaKey||event.ctrlKey)}else onOpen(url)}
  const edit=(item?:Bookmark)=>{setDirty(false);setDraft(item?{id:item.id,url:item.url,title:item.title,description:item.description,tags:[...item.tags],collections:[...item.collections],expectedRevision:item.revision}:{id:crypto.randomUUID(),url:'',title:'',description:'',tags:[],collections:collection?[collection]:[],expectedRevision:0})}
  const change=(patch:Partial<BookmarkInput>)=>{setDraft(d=>d?{...d,...patch}:d);setDirty(true)}
  const close=()=>{if(state.busy)return;if(dirty)setDiscard(true);else setDraft(null)}
  const gesture=useRef({release:()=>{},cancel:()=>{}})
- gesture.current={release:()=>{const action=bookmarkModifierRelease(selecting,modifierSelection.current,selected.length);if(action==='open')openSelected();else if(action==='clear')clearSelection()},cancel:clearSelection}
+ gesture.current={release:()=>{const ids=selectionModel.release();if(ids!==null){syncSelection();const urls=selectedBookmarkUrls(items,ids);if(urls.length)onOpenMany(urls)}},cancel:clearSelection}
  useEffect(()=>watchModifiers(()=>gesture.current.release(),()=>gesture.current.cancel()),[watchModifiers])
  return <main className="bookmarks-page"><header className="bookmarks-heading"><div><h1><BookmarkIcon size={25}/>收藏夹</h1></div><div className="bookmarks-actions"><Button size="sm" onClick={onImport} disabled={state.busy}>导入书签</Button><Button size="sm" variant="primary" onClick={()=>edit()}><Icon name="plus" size={16}/>添加链接</Button></div></header>
- <div className="bookmarks-toolbar"><div className="bookmarks-search"><Input ref={searchInput} aria-label="搜索收藏" placeholder="搜索标题、链接或标签" icon={<Icon name="search" size={16}/>} value={query} onChange={e=>setQuery(e.target.value)}/>{query&&<Button size="sm" variant="ghost" aria-label="清空搜索" onClick={()=>{setQuery('');searchInput.current?.focus()}}><Icon name="close" size={14}/></Button>}</div><Button size="sm" variant="ghost" aria-pressed={selecting} onClick={()=>selecting&&!modifierSelection.current&&selected.length?openSelected():selecting?clearSelection():setSelecting(true)}>{selecting&&!modifierSelection.current&&selected.length?`打开所选 (${selected.length})`:'多选'}</Button><SegmentedTabs value={view} onChange={setView} label="收藏显示方式" items={[{value:'cards',label:'卡片',id:'bookmarks-cards-tab',panelId:'bookmarks-content'},{value:'list',label:'列表',id:'bookmarks-list-tab',panelId:'bookmarks-content'}]}/></div>
+ <div className="bookmarks-toolbar"><div className="bookmarks-search"><Input ref={searchInput} aria-label="搜索收藏" placeholder="搜索标题、链接或标签" icon={<Icon name="search" size={16}/>} value={query} onChange={e=>setQuery(e.target.value)}/>{query&&<Button size="sm" variant="ghost" aria-label="清空搜索" onClick={()=>{setQuery('');searchInput.current?.focus()}}><Icon name="close" size={14}/></Button>}</div><Button size="sm" variant="ghost" aria-pressed={selecting} onClick={()=>selecting&&!selection.modifier&&selected.length?openSelected():selecting?clearSelection():(selectionModel.begin(),syncSelection())}>{selecting&&!selection.modifier&&selected.length?`打开所选 (${selected.length})`:'多选'}</Button><SegmentedTabs value={view} onChange={setView} label="收藏显示方式" items={[{value:'cards',label:'卡片',id:'bookmarks-cards-tab',panelId:'bookmarks-content'},{value:'list',label:'列表',id:'bookmarks-list-tab',panelId:'bookmarks-content'}]}/></div>
  {state.collections.length>20&&<div className="bookmarks-group-search"><Input aria-label="查找集合" placeholder="查找集合" value={collectionQuery} onChange={e=>setCollectionQuery(e.target.value)}/></div>}<div className="bookmarks-collections"><Button size="sm" variant="ghost" aria-pressed={!collection} onClick={()=>setCollection('')}>全部</Button>{collections.map(c=><Button key={c} size="sm" variant="ghost" aria-pressed={collection===c} onClick={()=>setCollection(c)}>{c}</Button>)}</div>
 
  <div ref={viewportRef} className="bookmarks-results" aria-busy={state.filtering} {...(state.filtering?{inert:''}:{})}>
  {state.error&&<div className="bookmarks-error" role="alert">{state.error}<Button size="sm" onClick={onReload} disabled={state.busy}>刷新</Button></div>}
  {!state.loaded&&!state.error?<p className="hub-muted">正在加载…</p>:<div id="bookmarks-content" role="tabpanel" data-selecting={selecting} aria-labelledby={'bookmarks-'+view+'-tab'} className={'bookmarks-grid bookmarks-'+view}>{items.map(item=><article key={item.id} className={'bookmark-item'+(selected.includes(item.id)?' is-selected':'')}>
- {selecting&&<Button className="bookmark-select" size="sm" variant="ghost" aria-label={'选择 '+item.title} aria-pressed={selected.includes(item.id)} onClick={event=>{if(event.metaKey||event.ctrlKey)modifierSelection.current=true;toggle(item.id)}}>{selected.includes(item.id)?<Icon name="check" size={14}/>:<span className="bookmark-select-empty"/>}</Button>}
+ {selecting&&<Button className="bookmark-select" size="sm" variant="ghost" aria-label={'选择 '+item.title} aria-pressed={selected.includes(item.id)} onClick={event=>toggle(item.id,event.metaKey||event.ctrlKey)}>{selected.includes(item.id)?<Icon name="check" size={14}/>:<span className="bookmark-select-empty"/>}</Button>}
  <Button variant="ghost" className="bookmark-open" aria-pressed={selecting?selected.includes(item.id):undefined} onClick={event=>activate(event,item.id,item.url)}>
  {view==='cards'&&item.preview?.image&&media[item.preview.image]&&<PreviewImage key={media[item.preview.image]} src={media[item.preview.image]!} className="bookmark-cover"/>}
  <span className="bookmark-site-icon">{item.preview?.icon&&media[item.preview.icon]?<PreviewImage key={media[item.preview.icon]} src={media[item.preview.icon]!} className="bookmark-favicon"/>:<span className="bookmark-monogram">{new URL(item.url).hostname.replace(/^www\./,'')[0]?.toUpperCase()}</span>}</span>

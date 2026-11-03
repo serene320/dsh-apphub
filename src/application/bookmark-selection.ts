@@ -12,3 +12,17 @@ export function bookmarkModifierRelease(selecting:boolean,modifierSelection:bool
   if(selectedCount===0)return 'clear'
   return modifierSelection?'open':'none'
 }
+
+/** Event handlers read synchronous state; rendering must not gate release or cancellation. */
+export function createBookmarkSelection(){
+ let state={selected:[] as string[],selecting:false,modifier:false}
+ const clear=()=>{if(state.selecting||state.selected.length||state.modifier)state={selected:[],selecting:false,modifier:false}}
+ return {
+  snapshot:()=>state,clear,
+  begin(){state={...state,selecting:true}},
+  toggle(id:string,modifier=false){state={selected:toggleBookmarkSelection(state.selected,id),selecting:true,modifier:state.modifier||modifier}},
+  retain(ids:readonly string[]){const selected=state.selected.filter(id=>ids.includes(id));if(selected.length!==state.selected.length)state={...state,selected}},
+  take(){const selected=state.selected;clear();return selected},
+  release(){const action=bookmarkModifierRelease(state.selecting,state.modifier,state.selected.length);if(action==='none')return null;const selected=action==='open'?state.selected:[];clear();return selected},
+ }
+}
