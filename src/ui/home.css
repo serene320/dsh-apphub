@@ -55,3 +55,7 @@
 .hub-task-menu-item small{display:block;margin-top:4px;font-size:12px;color:var(--dsw-alias-label-secondary)}
 
 .hub-composer .hub-task footer{padding:0 10px 10px;gap:8px}
+
+.hub-task-scope{font-size:12px;height:26px;max-width:240px;overflow:hidden;text-overflow:ellipsis;padding:0 6px;border-radius:var(--dsw-radius-md)}.hub-scope-divider{color:var(--dsw-alias-label-tertiary);margin:0 3px}.hub-scope-search{padding:8px}.hub-composer-target{flex:1;flex-wrap:wrap;row-gap:2px}.hub-task-activity{margin-left:auto}.hub-composer textarea:focus{height:66px}.hub-task footer{min-width:0}
+
+.hub-task-result-menu,.hub-task-scope-menu{width:300px;max-width:calc(100vw - 32px)}.hub-task-result-title{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;line-height:20px}.hub-task-menu-item{width:100%;max-width:none}.hub-task-result-menu small{line-height:20px}

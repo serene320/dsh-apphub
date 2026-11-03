@@ -20,5 +20,5 @@ export function openAppHub(directory:string) {
   }catch(error){notesError=error}
   let bookmarks:SqliteBookmarksRepository|undefined,bookmarksError:unknown
   try{const dir=join(directory,'apps','bookmarks');mkdirSync(dir,{recursive:true,mode:0o700});bookmarks=new SqliteBookmarksRepository(join(dir,'data.sqlite'))}catch(e){bookmarksError=e}
-  return {bookmarks:bookmarks?createBookmarksService(bookmarks):undefined,bookmarksError,service:new AppHubApplication(hub,notes),notesError,close(){bookmarks?.close();notes?.close();hub.close()}}
+  return {hub,bookmarksRepository:bookmarks,bookmarks:bookmarks?createBookmarksService(bookmarks):undefined,bookmarksError,service:new AppHubApplication(hub,notes),notesError,close(){bookmarks?.close();notes?.close();hub.close()}}
 }

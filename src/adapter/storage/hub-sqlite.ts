@@ -8,12 +8,12 @@ export class HubRepository {
     try {
     this.db.exec('PRAGMA busy_timeout=3000')
     const version=this.db.prepare('PRAGMA user_version').get()!.user_version
-    if(version!==0&&version!==1){throw Error('Unsupported hub schema')}
+    if(version!==0&&version!==1&&version!==2){throw Error('Unsupported hub schema')}
     this.db.exec(`CREATE TABLE IF NOT EXISTS preferences(key TEXT PRIMARY KEY,value TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS apps(id TEXT PRIMARY KEY,operation TEXT NOT NULL);
       INSERT OR IGNORE INTO apps VALUES('notes','notes.create');
       CREATE TABLE IF NOT EXISTS tasks(id TEXT PRIMARY KEY,sessionId TEXT NOT NULL,noteId TEXT UNIQUE NOT NULL,app TEXT NOT NULL,operation TEXT NOT NULL,callKey TEXT UNIQUE,payload TEXT,status TEXT NOT NULL);
-      CREATE TABLE IF NOT EXISTS migrations(id TEXT PRIMARY KEY); PRAGMA user_version=1`)
+      CREATE TABLE IF NOT EXISTS migrations(id TEXT PRIMARY KEY); CREATE TABLE IF NOT EXISTS app_tasks(id TEXT PRIMARY KEY,sessionId TEXT NOT NULL,app TEXT NOT NULL); PRAGMA user_version=2`)
     } catch(error) {this.db.close();throw error}
   }
   settings():HubSettings {const row=this.db.prepare("SELECT value FROM preferences WHERE key='hub'").get();return row?JSON.parse(String(row.value)):{appearance:'host',revision:0}}
@@ -46,5 +46,13 @@ export class HubRepository {
     }catch(error){this.db.exec('ROLLBACK');throw error}
   }
   finish(id:string,status:'saved'|'failed'){this.db.prepare('UPDATE tasks SET status=? WHERE id=?').run(status,id)}
+  prepareAppTask(id:string,sessionId:string,app:string){
+    const bound=this.boundApp(sessionId);if(bound&&bound!==app)throw Error('TASK_APP_CONFLICT')
+    const old=this.appTask(id)
+    if(old&&(old.sessionId!==sessionId||old.app!==app))throw Error('TASK_CONFLICT')
+    this.db.prepare('INSERT OR IGNORE INTO app_tasks VALUES(?,?,?)').run(id,sessionId,app)
+  }
+  boundApp(sessionId:string){return this.db.prepare('SELECT app FROM app_tasks WHERE sessionId=? LIMIT 1').get(sessionId)?.app as string|undefined}
+  appTask(id:string){return this.db.prepare('SELECT * FROM app_tasks WHERE id=?').get(id) as {id:string;sessionId:string;app:string}|undefined}
   close(){this.db.close()}
 }

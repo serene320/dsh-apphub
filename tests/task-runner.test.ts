@@ -67,3 +67,13 @@ test('stalled preparation releases composer and surfaces failure',async t=>{
  assert.equal(await pending,false);assert.equal(r.getSnapshot().busy,false);assert.equal(r.getSnapshot().tasks[0]?.status,'failed')
  }finally{r.dispose()}
 })
+
+test('bookmark tasks accept existing results and refresh bookmarks without opening a note',async t=>{
+ const s=scenario(t);let loads=0,text=''
+ s.ctx.remote.apphub.prepareBookmarkTask=async()=>({ok:true})
+ s.ctx.remote.apphub.getBookmarkTask=async()=>({ok:true,value:{status:'saved',savedCount:0,existingCount:3,failedCount:0,pendingCount:0}})
+ s.notes.load=()=>assert.fail('bookmark task must not refresh notes')
+ s.ctx.sessions.retain=()=>({release:()=>{},ready:Promise.resolve({session:{beginSubmission:(arg:any)=>{text=arg.text;return {requestId:'r'}},prompt:async()=>({ok:true}),getSnapshot:()=>({running:false,awaitingFirstTurn:false})}})})
+ const runner=createTaskRunner(s.ctx,s.notes,{load:async()=>{loads++}})
+ try{await runner.run('整理网站','bookmarks');await flush();t.mock.timers.tick(7000);await flush();assert.equal(runner.getSnapshot().tasks.length,0);assert.ok(loads>0);assert.equal(runner.getSnapshot().recent[0]?.message,'新增 0 · 已有 3');assert.match(text,/apphub_create_bookmarks/);assert.doesNotMatch(text,/apphub_create_note/)}finally{runner.dispose()}
+})

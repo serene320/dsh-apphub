@@ -35,3 +35,39 @@ test('failed bookmark save keeps items; import failure keeps preview for retry',
  await controller.load();assert.equal(await controller.save({id:randomUUID(),url:'https://example.com',title:'test',description:'',tags:[],collections:[],expectedRevision:0}),undefined);assert.deepEqual(controller.getSnapshot().items,[]);assert.match(controller.getSnapshot().error,/save failed/);await controller.preview(html);await controller.importHtml();assert.ok(controller.getSnapshot().importPreview);assert.match(controller.getSnapshot().error,/import failed/)
  fail=false;await controller.importHtml();assert.equal(controller.getSnapshot().importResult?.added,2);assert.equal(controller.getSnapshot().importPreview,null);controller.dispose()
 })
+
+test('AI batches are authorized, replay-safe, preserve user fields and organize with revision checks',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'apphub-ai-')),repo=new SqliteBookmarksRepository(join(dir,'db'))
+ try{
+  const service=createBookmarksService(repo),caller={sessionId:'chat',callId:'one',operations:['bookmarks.create','bookmarks.organize']}
+  const item={url:'https://example.com/a',title:'Example',summary:'AI用途',tags:['文档'],collections:['参考'],sources:['https://example.com']}
+  assert.throws(()=>service.dispatch('bookmarks.create',{items:[item]},{...caller,operations:[]}),/FORBIDDEN/)
+  const first=service.dispatch('bookmarks.create',{items:[item]},caller)
+  assert.equal(first.results[0]?.status,'created');assert.deepEqual(service.dispatch('bookmarks.create',{items:[item]},caller),first)
+  assert.throws(()=>service.dispatch('bookmarks.create',{items:[{...item,title:'different'}]},caller),/REQUEST_CONFLICT/)
+  const b=service.list()[0]!
+  service.save({...b,title:'个人标题',description:'个人备注',expectedRevision:b.revision})
+  assert.equal(service.dispatch('bookmarks.create',{items:[item]},{...caller,callId:'two'}).results[0]?.status,'existing')
+  assert.equal(service.list()[0]?.title,'个人标题');assert.equal(service.list()[0]?.aiSummary,'AI用途')
+  const current=service.list()[0]!
+  assert.equal(service.dispatch('bookmarks.organize',{id:current.id,revision:current.revision,tags:['开发'],collections:['OpenAI']},{...caller,callId:'three'}).results[0]?.status,'updated')
+  assert.equal(service.list()[0]?.description,'个人备注')
+  assert.equal(service.dispatch('bookmarks.organize',{id:current.id,revision:current.revision,tags:[],collections:[]},{...caller,callId:'four'}).results[0]?.status,'failed')
+  assert.deepEqual(service.summary('chat'),{savedCount:2,existingCount:1,failedCount:1,createdCount:1,updatedCount:1})
+  assert.throws(()=>service.dispatch('bookmarks.create',{items:Array(21).fill(item)},{...caller,callId:'large'}));assert.equal(service.summary('chat').failedCount,2)
+ }finally{repo.close();rmSync(dir,{recursive:true,force:true})}
+})
+
+test('10000 bookmarks paginate and filter without sending the full collection to the page',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'apphub-many-')),repo=new SqliteBookmarksRepository(join(dir,'db'))
+ try{
+  const service=createBookmarksService(repo)
+  service.importItems(Array.from({length:10000},(_,i)=>({url:`https://example.com/${i}`,title:`文档 ${i}`,collections:[i%2?'开发':'日常']})))
+  const a=service.page('','',0),b=service.page('','',60)
+  assert.equal(a.total,10000);assert.equal(a.items.length,60);assert.equal(b.items.length,60)
+  assert.equal(new Set([...a.items,...b.items].map(x=>x.id)).size,120)
+  assert.equal(service.page('','开发',0).total,5000)
+  assert.equal(service.page('文档 9999','',0).items.length,1)
+  assert.throws(()=>service.page('','',0,10000))
+ }finally{repo.close();rmSync(dir,{recursive:true,force:true})}
+})

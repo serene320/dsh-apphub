@@ -1,3 +1,4 @@
+import {useBookmarkMedia} from './bookmark-media.ts'
 import {createBookmarksController} from '../../application/bookmarks-controller.ts'
 import {chooseBookmarkFile,openBookmark} from './bookmark-files.ts'
 import {Bookmarks} from '../../ui/Bookmarks.tsx'
@@ -41,6 +42,7 @@ function Surface({port,notes,settings,noteSettings,runner,bookmarks}:SurfaceProp
   const [home] = useState(()=>createHomeController(port))
   const [page,setPage]=useState('notes')
   const bookmarkState=useSyncExternalStore(bookmarks.subscribe,bookmarks.getSnapshot)
+  const media=useBookmarkMedia(bookmarkState.items)
   const [settingsOpen,setSettingsOpen]=useState<'hub'|'notes'|null>(null), [inputError,setInputError]=useState('')
   const homeState=useSyncExternalStore(home.subscribe,home.getSnapshot)
   const notesState=useSyncExternalStore(notes.subscribe,notes.getSnapshot)
@@ -54,10 +56,10 @@ function Surface({port,notes,settings,noteSettings,runner,bookmarks}:SurfaceProp
   const openApp=(id:string)=>{if(id==='notes')openNotes();else if(id==='bookmarks'){setPage('bookmarks');void bookmarks.load()}}
   const submit=async(text:string)=>{
     try {
-      const command=resolveTask(text,'notes')
-      setInputError('');openNotes()
+      const command=resolveTask(text,page==='bookmarks'?'bookmarks':'notes')
+      setInputError('');openApp(command.appId)
       if(command.action==='open')return true
-      const accepted=await runner.run(command.prompt)
+      const accepted=await runner.run(command.prompt,command.appId,command.appId==='bookmarks'?bookmarkState.collection:'')
       return accepted
     }catch(error){setInputError(error instanceof Error?error.message:'任务无法执行');return false}
   }
@@ -66,13 +68,13 @@ function Surface({port,notes,settings,noteSettings,runner,bookmarks}:SurfaceProp
     <nav className="hub-navigation" aria-label="AppHub 应用导航"><Button size="sm" variant="ghost" aria-pressed={page==='home'} onClick={()=>setPage('home')}><HubIcon size={16}/>AppHub</Button><span className="hub-navigation-label">应用</span>{apps.map(app=><Button key={app.id} size="sm" variant="ghost" aria-pressed={page===app.id} onClick={()=>openApp(app.id)}>{app.id==='notes'?<NotesIcon size={18}/>:<BookmarkIcon size={18}/ >}{app.name}</Button>)}</nav>
     <div className="hub-workspace-main">
     <div className="hub-workspace-content">
-    {page==='home'?<Home state={homeState} onRefresh={()=>{void home.refresh()}} onOpen={openApp} onSettings={()=>setSettingsOpen('hub')} onAppSettings={()=>setSettingsOpen('notes')} onTask={openApp}/>:page==='bookmarks'?<Bookmarks state={bookmarkState} appearance={preferences.value.appearance} onSave={bookmarks.save} onRemove={bookmarks.remove} onImport={()=>chooseBookmarkFile(html=>{void bookmarks.preview(html)},bookmarks.reportError)} onConfirmImport={()=>{void bookmarks.importHtml()}} onCloseImport={bookmarks.clearImport} onOpen={openBookmark} onReload={()=>{void bookmarks.load()}}/>:<>
+    {page==='home'?<Home state={homeState} onRefresh={()=>{void home.refresh()}} onOpen={openApp} onSettings={()=>setSettingsOpen('hub')} onAppSettings={()=>setSettingsOpen('notes')} onTask={openApp}/>:page==='bookmarks'?<Bookmarks onRefreshPreview={id=>{void bookmarks.refreshPreview(id)}} media={media} onFilter={bookmarks.filter} onPage={bookmarks.page} state={bookmarkState} appearance={preferences.value.appearance} onSave={bookmarks.save} onRemove={bookmarks.remove} onImport={()=>chooseBookmarkFile(html=>{void bookmarks.preview(html)},bookmarks.reportError)} onConfirmImport={()=>{void bookmarks.importHtml()}} onCloseImport={bookmarks.clearImport} onOpen={openBookmark} onReload={()=>{void bookmarks.load()}}/>:<>
 
 
       <Notes appearance={notePreferences.value.appearance} onArchive={async archived=>{const ok=await notes.setArchived(archived);if(ok)notes.close();return ok}} onCloseEditor={notes.closeEditor} state={notesState} onSettings={()=>setSettingsOpen('notes')} onCreate={()=>notes.create()} onSelect={notes.select} onEdit={notes.edit} onSave={()=>{void notes.save()}} onRestore={notes.restore} onReload={()=>{void notes.load()}}/>
     </>}
     </div>
-    {page!=='bookmarks'&&<TaskComposer prompt={prompt} onPromptChange={setPrompt} onSubmit={submit} taskBusy={task.busy} error={inputError} target="备忘录" activity={<TaskActivity tasks={task.tasks} onOpen={runner.openSession} onDismiss={runner.dismiss}/>}/>}
+    {<TaskComposer prompt={prompt} onPromptChange={setPrompt} onSubmit={submit} taskBusy={task.busy} error={inputError} scope={page==='bookmarks'?{value:bookmarkState.collection,choices:bookmarkState.collections,onChange:collection=>bookmarks.filter(bookmarkState.query,collection)}:undefined} target={page==='bookmarks'?'收藏夹':'备忘录'} activity={<TaskActivity tasks={task.tasks.filter(t=>page==='home'||t.appId===page)} recent={task.recent.filter(t=>page==='home'||t.appId===page)} onOpen={runner.openSession} onDismiss={runner.dismiss}/>}/>}
     </div></div>
     {settingsOpen&&<Settings scope={settingsOpen} value={selectedPreferences.value} busy={selectedPreferences.busy} error={selectedPreferences.error} loaded={selectedPreferences.loaded} onRetry={()=>{void selectedSettings.load()}} onSave={selectedSettings.save} onClose={()=>setSettingsOpen(null)}/>}
   </div>
@@ -100,6 +102,8 @@ export async function apply(ctx: Context) {
     }
     scope.effect(()=>()=>{for(const request of bookmarkRequests)request.abort();bookmarkRequests.clear()})
     const bookmarks=createBookmarksController({
+      refreshPreview:async id=>{const r=await bookmarkRequest(signal=>scope.remote.apphub.refreshBookmarkPreview(id,signal));if(!r.ok)throw Error(r.error.message||r.error.code)},
+      query:async(query,collection,offset)=>{const r=await bookmarkRequest(signal=>scope.remote.apphub.queryBookmarks(query,collection,offset,signal));if(!r.ok)throw Error(r.error.message||r.error.code);return r.value},
       list:async()=>{const r=await bookmarkRequest(signal=>scope.remote.apphub.listBookmarks(signal));if(!r.ok)throw Error(r.error.code);return r.value},
       save:async input=>{const r=await bookmarkRequest(signal=>scope.remote.apphub.saveBookmark(input,signal));if(!r.ok)throw Error(r.error.message||r.error.code);return r.value},
       remove:async(id,revision)=>{const r=await bookmarkRequest(signal=>scope.remote.apphub.removeBookmark(id,revision,signal));if(!r.ok)throw Error(r.error.code);return r.value},
@@ -112,7 +116,7 @@ export async function apply(ctx: Context) {
     })
     const settings=makeSettings('hub'),noteSettings=makeSettings('notes')
     void settings.load();void noteSettings.load()
-    const runner=createTaskRunner(scope,notes)
+    const runner=createTaskRunner(scope,notes,bookmarks)
     scope.effect(()=>()=>{runner.dispose();notes.dispose();bookmarks.dispose()})
     // Flush early on backgrounding; a synchronous journal protects edits if teardown wins.
     scope.effect(()=>{

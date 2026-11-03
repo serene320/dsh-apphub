@@ -4,9 +4,9 @@ import { parseTask, resolveTask } from '../src/application/tasks.ts'
 import { createSettingsController } from '../src/application/settings-controller.ts'
 
 test('mentions route only declared capabilities and require a real create instruction', () => {
-  assert.deepEqual(parseTask('@备忘录/新建 整理今天的计划'),{action:'create',prompt:'整理今天的计划'})
-  assert.deepEqual(parseTask('@备忘录\n保留这段话'),{action:'create',prompt:'保留这段话'})
-  assert.deepEqual(parseTask('@备忘录/打开'),{action:'open',prompt:''})
+  assert.deepEqual(parseTask('@备忘录/新建 整理今天的计划'),{appId:'notes',action:'create',prompt:'整理今天的计划'})
+  assert.deepEqual(parseTask('@备忘录\n保留这段话'),{appId:'notes',action:'create',prompt:'保留这段话'})
+  assert.deepEqual(parseTask('@备忘录/打开'),{appId:'notes',action:'open',prompt:''})
   for (const text of ['@不存在 hi','@备忘录/新建','@备忘录/删除 删除全部','@备忘录/打开 并新建']) assert.throws(()=>parseTask(text))
 })
 
@@ -21,9 +21,15 @@ test('settings failure keeps saved preferences and allows read retry',async()=>{
 })
 
 test('selected app supplies task context without a mention, explicit operations still validate',()=>{
-  assert.deepEqual(resolveTask('整理今天的计划','notes'),{action:'create',prompt:'整理今天的计划'})
-  assert.deepEqual(resolveTask('@备忘录/打开','notes'),{action:'open',prompt:''})
+  assert.deepEqual(resolveTask('整理今天的计划','notes'),{appId:'notes',action:'create',prompt:'整理今天的计划'})
+  assert.deepEqual(resolveTask('@备忘录/打开','notes'),{appId:'notes',action:'open',prompt:''})
   assert.throws(()=>resolveTask('','notes'))
   assert.throws(()=>resolveTask('整理计划','unknown'))
   assert.throws(()=>resolveTask('@备忘录/删除 删除全部','notes'))
+})
+
+test('bookmark selection and explicit mention bind the correct app',()=>{
+ assert.equal(resolveTask('整理 OpenAI 官网','bookmarks').appId,'bookmarks')
+ assert.equal(resolveTask('@收藏夹 收藏文档','notes').appId,'bookmarks')
+ assert.equal(resolveTask('@备忘录 记下想法','bookmarks').appId,'notes')
 })
