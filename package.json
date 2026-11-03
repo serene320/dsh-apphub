@@ -1,0 +1,86 @@
+{
+  "name": "dsh-apphub",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AppHub entry and home for DeepSeek Harness",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "types": "./lib/types/adapter/host/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/types/adapter/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./typert": {
+      "types": "./lib/typert.host.d.ts",
+      "default": "./lib/typert.host.js"
+    },
+    "./remote": {
+      "types": "./lib/typert.remote-client.d.ts",
+      "default": "./lib/typert.remote-client.js"
+    },
+    "./package.json": "./package.json",
+    "./types": {
+      "types": "./lib/types/contracts.d.ts",
+      "default": "./lib/contracts.js"
+    }
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js",
+    "lib/types",
+    "lib/typert.host.js",
+    "lib/typert.host.d.ts",
+    "lib/typert.remote-client.js",
+    "lib/typert.remote-client.d.ts",
+    "lib/contracts.js"
+  ],
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-api-gateway",
+        "@deepseek-ai/dsh-api-session-controller",
+        "@deepseek-ai/dsh-client-ui-workspace"
+      ]
+    }
+  },
+  "scripts": {
+    "build": "npm run check:boundaries && node scripts/build.mjs",
+    "typecheck": "tsc -p tsconfig.host.json && tsc -p tsconfig.client.json",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "check:boundaries": "node scripts/check-boundaries.mjs"
+  },
+  "engines": {
+    "node": ">=24.9.0"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.5",
+    "@deepseek-ai/dsh-api-gateway": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-api-session-controller": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-client-store": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-client-ui-layout": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-client-ui-sidebar": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-client-ui-slots": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-client-ui-workspace": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-tools": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-typert-generator": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-typert-protocol": "0.2.1-rc.5",
+    "@types/node": "24.19.2",
+    "@types/react": "18.3.31",
+    "esbuild": "0.28.2",
+    "react": "18.3.1",
+    "typescript": "6.0.3",
+    "zod": "4.6.7"
+  },
+  "overrides": {
+    "zod": "$zod"
+  }
+}

@@ -1,0 +1,57 @@
+/* Page geometry follows the official plugin manager; controls come from ui-primitives. */
+.apphub-shell{height:100%;min-height:0;display:flex;flex-direction:column;container-type:inline-size;font-family:var(--dsw-font-family);color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-base)}
+.apphub-shell *{box-sizing:border-box}
+.apphub-home{--ah-text:var(--dsw-alias-label-primary);--ah-muted:var(--dsw-alias-label-secondary);--ah-border:var(--dsw-alias-border-l2);--ah-surface:var(--dsw-alias-bg-layer-1);flex:1;min-height:0;overflow:auto;padding:calc(28px + var(--dsh-frame-top-clearance,0px)) clamp(24px,4cqw,48px) 48px}
+.hub-content{max-width:900px;margin:0 auto}
+.hub-heading{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:16px}
+.hub-heading h1{font-size:20px;font-weight:500;line-height:28px;margin:0}
+.hub-heading p{font-size:13px;line-height:20px;color:var(--ah-muted);margin:4px 0 0}
+.hub-actions{display:flex;align-items:center;gap:12px}
+.hub-search{width:220px}
+.hub-icon-button{width:28px;padding:0}
+.hub-task{margin-top:28px;border:1px solid var(--ah-border);border-radius:var(--dsw-radius-lg);background:var(--ah-surface);position:relative}
+.hub-task:focus-within{border-color:var(--dsw-alias-border-l4)}
+.hub-task textarea{display:block;border:0;outline:none;background:transparent;color:var(--ah-text);width:100%;min-height:88px;resize:vertical;padding:16px;font-family:inherit;font-size:14px;line-height:22px}
+.hub-task footer{display:flex;align-items:center;padding:0 12px 12px;gap:12px}
+
+.hub-mentions{position:absolute;top:calc(100% - 4px);left:12px;z-index:5;width:min(380px,calc(100% - 24px));border:1px solid var(--ah-border);border-radius:var(--dsw-radius-md);padding:6px;background:var(--dsw-alias-bg-layer-2);box-shadow:var(--dsw-alias-shadow-l2)}
+.hub-mentions button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;width:100%;height:auto;padding:10px;text-align:left}
+.hub-mentions button[aria-selected=true]{background:var(--dsw-alias-interactive-bg-hover)}
+.hub-mentions strong{font-size:13px;font-weight:500}.hub-mentions span{font-size:12px;color:var(--ah-muted)}
+.hub-feedback{color:var(--dsw-alias-label-secondary);font-size:12px;margin:12px 0}.hub-feedback:empty{display:none}
+.hub-app-section{margin-top:32px}.hub-section-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.hub-section-heading h2{font-size:14px;line-height:22px;font-weight:500;margin:0}.hub-section-heading span{font-size:12px;color:var(--ah-muted)}
+.hub-app-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 32px}
+.hub-app-row{display:flex;align-items:center;gap:8px;min-width:0;padding:8px 0;border-radius:var(--dsw-radius-md)}
+.hub-app-open{flex:1;justify-content:flex-start;height:auto;gap:12px;padding:8px;min-width:0;text-align:left}
+.hub-app-open strong{font-size:13px;line-height:20px;font-weight:500;display:block;margin-bottom:2px}.hub-app-open small{font-size:12px;color:var(--ah-muted);line-height:18px}
+.hub-app-icon{display:grid;place-items:center;flex:none;width:36px;height:36px;color:var(--ah-muted)}.hub-app-icon svg{width:36px;height:36px}
+
+.hub-muted{font-size:13px;color:var(--ah-muted)}
+
+.hub-settings{color:var(--dsw-alias-label-primary);width:min(480px,100%);max-height:100%;font-family:var(--dsw-font-family)}
+.hub-settings *{box-sizing:border-box}.hub-settings h3{font-size:14px;font-weight:500;margin:12px 0}.hub-settings footer{margin-top:20px;display:flex;align-items:center;gap:12px;font-size:12px}
+@container(max-width:620px){.hub-app-list{grid-template-columns:1fr}.hub-actions{width:100%}.hub-search{flex:1}.hub-run{margin-left:auto}}
+
+/* AppHub owns this navigation and composer; the DSH shell is untouched. */
+.hub-workspace{display:flex;flex:1;min-height:0;overflow:hidden}
+.hub-navigation{width:184px;flex:none;display:flex;flex-direction:column;gap:4px;padding:calc(28px + var(--dsh-frame-top-clearance,0px)) 12px 20px;border-right:1px solid var(--dsw-alias-border-l2)}
+.hub-navigation button{justify-content:flex-start;gap:8px;height:30px;padding:0 10px;font-size:13px}.hub-navigation-label{padding:20px 10px 6px;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary)}.hub-navigation button[aria-pressed=true]{background:var(--dsw-alias-interactive-bg-hover)}
+.hub-workspace-main{position:relative;flex:1;min-width:0;min-height:0;display:flex;flex-direction:column}
+.hub-workspace-content{display:flex;flex-direction:column;flex:1;min-height:0;padding-bottom:0}
+.hub-composer{position:relative;flex:none;width:calc(100% - 48px);max-width:640px;margin:8px auto 16px;z-index:5;color:var(--dsw-alias-label-primary);--ah-text:var(--dsw-alias-label-primary);--ah-muted:var(--dsw-alias-label-secondary);--ah-border:var(--dsw-alias-border-l2);--ah-surface:var(--dsw-alias-bg-layer-1)}
+.hub-composer .hub-task{margin:0;border:0;border-radius:var(--dsw-radius-panel);background:var(--dsw-alias-bg-layer-2);box-shadow:var(--dsw-elevation-prominent)}
+.hub-composer-target{display:flex;align-items:center;gap:8px;min-width:0;font-size:12px;line-height:20px;color:var(--dsw-alias-label-secondary)}
+.hub-composer textarea{min-height:44px;height:44px;resize:none;padding:10px 14px;font-size:13px;line-height:22px}
+.hub-composer .hub-mentions{top:auto;bottom:calc(100% + 8px)}
+.hub-composer .hub-feedback:not(:empty){background:var(--dsw-alias-bg-layer-2);padding:6px 12px;margin:4px 0 0;border-radius:var(--dsw-radius-sm)}
+@container(max-width:720px){.hub-workspace{flex-direction:column}.hub-navigation-label{display:none}.hub-navigation{width:100%;flex-direction:row;padding:calc(12px + var(--dsh-frame-top-clearance,0px)) 16px 8px;border-right:0;border-bottom:1px solid var(--dsw-alias-border-l2)}.hub-workspace .notes-collection,.hub-workspace .apphub-home{padding-top:20px}.hub-composer{width:calc(100% - 32px);margin-bottom:12px}.hub-workspace-content{padding-bottom:0}}
+
+.hub-composer .hub-run{margin-left:auto;border-radius:50%;width:28px;height:28px;padding:0;background:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-label-primary-foreground)}
+.hub-composer .hub-mention-trigger{width:28px;height:28px;padding:0;border-radius:50%;background:var(--dsw-alias-interactive-bg-hover)}
+
+.hub-task-activity{height:20px;padding:0 4px;font-size:12px;color:var(--dsw-alias-label-secondary)}
+.hub-task-menu-item{display:block;max-width:300px;white-space:normal;overflow-wrap:anywhere;font-size:13px}
+.hub-task-menu-item small{display:block;margin-top:4px;font-size:12px;color:var(--dsw-alias-label-secondary)}
+
+.hub-composer .hub-task footer{padding:0 10px 10px;gap:8px}

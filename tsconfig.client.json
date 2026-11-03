@@ -1,0 +1,1 @@
+{"extends":"./tsconfig.base.json","include":["src/adapter/client/**/*.ts","src/adapter/client/**/*.tsx","src/ui/**/*","src/application/home-controller.ts","src/contracts.ts"]}
