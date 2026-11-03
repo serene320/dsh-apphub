@@ -1,6 +1,6 @@
 import {useBookmarkMedia} from './bookmark-media.ts'
 import {createBookmarksController} from '../../application/bookmarks-controller.ts'
-import {chooseBookmarkFile,openBookmark} from './bookmark-files.ts'
+import {chooseBookmarkFile,openBookmark,openBookmarks} from './bookmark-files.ts'
 import {Bookmarks} from '../../ui/Bookmarks.tsx'
 import {apps} from '../../application/hub.ts'
 import bookmarksCss from '../../ui/bookmarks.css'
@@ -68,7 +68,7 @@ function Surface({port,notes,settings,noteSettings,runner,bookmarks}:SurfaceProp
     <nav className="hub-navigation" aria-label="AppHub 应用导航"><Button size="sm" variant="ghost" aria-pressed={page==='home'} onClick={()=>setPage('home')}><HubIcon size={16}/>AppHub</Button><span className="hub-navigation-label">应用</span>{apps.map(app=><Button key={app.id} size="sm" variant="ghost" aria-pressed={page===app.id} onClick={()=>openApp(app.id)}>{app.id==='notes'?<NotesIcon size={18}/>:<BookmarkIcon size={18}/ >}{app.name}</Button>)}</nav>
     <div className="hub-workspace-main">
     <div className="hub-workspace-content">
-    {page==='home'?<Home state={homeState} onRefresh={()=>{void home.refresh()}} onOpen={openApp} onSettings={()=>setSettingsOpen('hub')} onAppSettings={()=>setSettingsOpen('notes')} onTask={openApp}/>:page==='bookmarks'?<Bookmarks onRefreshPreview={id=>{void bookmarks.refreshPreview(id)}} media={media} onFilter={bookmarks.filter} onPage={bookmarks.page} state={bookmarkState} appearance={preferences.value.appearance} onSave={bookmarks.save} onRemove={bookmarks.remove} onImport={()=>chooseBookmarkFile(html=>{void bookmarks.preview(html)},bookmarks.reportError)} onConfirmImport={()=>{void bookmarks.importHtml()}} onCloseImport={bookmarks.clearImport} onOpen={openBookmark} onReload={()=>{void bookmarks.load()}}/>:<>
+    {page==='home'?<Home state={homeState} onRefresh={()=>{void home.refresh()}} onOpen={openApp} onSettings={()=>setSettingsOpen('hub')} onAppSettings={()=>setSettingsOpen('notes')} onTask={openApp}/>:page==='bookmarks'?<Bookmarks onOpenMany={openBookmarks} onRefreshPreview={id=>{void bookmarks.refreshPreview(id)}} media={media} onFilter={bookmarks.filter} onPage={bookmarks.page} state={bookmarkState} appearance={preferences.value.appearance} onSave={bookmarks.save} onRemove={bookmarks.remove} onImport={()=>chooseBookmarkFile(html=>{void bookmarks.preview(html)},bookmarks.reportError)} onConfirmImport={()=>{void bookmarks.importHtml()}} onCloseImport={bookmarks.clearImport} onOpen={openBookmark} onReload={()=>{void bookmarks.load()}}/>:<>
 
 
       <Notes appearance={notePreferences.value.appearance} onArchive={async archived=>{const ok=await notes.setArchived(archived);if(ok)notes.close();return ok}} onCloseEditor={notes.closeEditor} state={notesState} onSettings={()=>setSettingsOpen('notes')} onCreate={()=>notes.create()} onSelect={notes.select} onEdit={notes.edit} onSave={()=>{void notes.save()}} onRestore={notes.restore} onReload={()=>{void notes.load()}}/>
