@@ -55,3 +55,18 @@
 ## 收藏夹规划进度
 
 已完成 DSH 图片、文件选择、凭据与授权机制的源码核查，明确首版包括预览卡片、HTML 与 Stars 导入。现成能力、缺口和实施出口已写入 references/architecture/roadmap。当前未新增收藏夹代码、依赖、数据库或凭据，未调用模型、导入真实收藏、改宿主或运行新实例；下一步为三个最小技术验证。
+
+## 收藏夹桌面闭环验证（2026-11-03）
+
+在原 DSH 桌面、原 profile 内临时挂载 AppHub 验证入口；未另开测试实例、未改宿主或凭据，未调用模型。
+
+| 验证 | 实际结果 |
+|---|---|
+| 文件选择与传输 | 系统文件框选择合成 bookmarks.html；File.text → AppHub Remote → Host 回执 230 字节、fixture=true、2 条链接。仅验证输入传输，不是完整 HTML 导入/落库验收 |
+| 图片资源展示 | 插件使用 connection.fetch 注册 /api/apphub-probe-image，客户端经页面 transport.fetch（缺省 fetch）取 PNG → Blob URL → img onLoad；桌面实际显示四色测试图。路由已随探针撤除，正式实现使用资源 ID 限定读取 |
+| 凭据服务 | describe 专用不存在的测试引用，available=true、configured=false、writable=true；未读取真实密钥、未写凭据，不能算 GitHub 授权完成 |
+| 网页抓取 | ctx.web 存在，调用 https://example.com 被非公网 IP 校验拒绝；本机 DNS lookup 得到 198.18.0.178，符合 Fake-IP 特征，但未检查/修改代理配置。真实网页内容未获取，验收未通过 |
+
+首次用顶层 Uint8Array Remote 返回图片得到 gateway/internal，未定位根因，不能据此断言宿主不支持二进制；改用已规划的公开资源路由成功。临时探针源码与合成文件仅留在被忽略的 .runtime/probe，生产源码恢复，构建通过。
+
+开工条件尚未满足，因此未开始收藏夹实现。下一步先明确现有网络下 DSH 公共抓取的兼容路径；不得关闭公网地址检查、强制替换 DNS 或偷换成第三方抓取来宣称通过。代理配置与宿主修改不在本轮范围。
